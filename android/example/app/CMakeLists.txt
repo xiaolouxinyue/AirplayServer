@@ -4,24 +4,9 @@ set(RAOP_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../../../lib)
 set(MDNS_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/mDNSResponder)
 set(FDK_AAC_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../../third_party/fdk-aac)
 
-add_subdirectory(${RAOP_LIB_PATH} raop_out)
-add_subdirectory(${MDNS_LIB_PATH} mdns_out)
+add_subdirectory(${RAOP_LIB_PATH} build_raop)
+add_subdirectory(${MDNS_LIB_PATH} build_mdns)
 
-#include_directories(${RAOP_LIB_PATH}
-#        ${FDK_AAC_LIB_PATH}libAACdec/include
-#        ${FDK_AAC_LIB_PATH}libAACenc/include
-#        ${FDK_AAC_LIB_PATH}libFDK/include
-#        ${FDK_AAC_LIB_PATH}libMpegTPDec/include
-#        ${FDK_AAC_LIB_PATH}libMpegTPEnc/include
-#        ${FDK_AAC_LIB_PATH}libPCMutils/include
-#        ${FDK_AAC_LIB_PATH}libSBRdec/include
-#        ${FDK_AAC_LIB_PATH}libSBRenc/include
-#        ${FDK_AAC_LIB_PATH}libSYS/include
-#
-#        ${FDK_AAC_LIB_PATH}libArithCoding/include
-#        ${FDK_AAC_LIB_PATH}libDRCdec/include
-#        ${FDK_AAC_LIB_PATH}libSACdec/include
-#        ${FDK_AAC_LIB_PATH}libSACenc/include)
 add_library( raop_server
         SHARED
         src/main/cpp/jni_raop_server.cpp
