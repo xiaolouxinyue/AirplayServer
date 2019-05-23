@@ -15,7 +15,7 @@
 #ifndef AIRPLAYSERVER_DNSSD_H
 #define AIRPLAYSERVER_DNSSD_H
 
-#include "../mDNSResponder/mDNSShared/dns_sd.h"
+#include "dns_sd.h"
 #ifdef __cplusplus
 extern "C" {
 #endif

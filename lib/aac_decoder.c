@@ -23,11 +23,12 @@
  */
 
 #include <malloc.h>
-#include "aac_decoder.h"
-#include "fdk-aac/libAACdec/include/aacdecoder_lib.h"
-#include "fdk-aac/libFDK/include/clz.h"
-#include "fdk-aac/libSYS/include/FDK_audio.h"
 #include "logger.h"
+#include "aac_decoder.h"
+#include "../third_party/fdk-aac/libAACdec/include/aacdecoder_lib.h"
+#include "../third_party/fdk-aac/libFDK/include/clz.h"
+#include "../third_party/fdk-aac/libSYS/include/FDK_audio.h"
+
 
 struct aac_decoder_s {
     logger_t *logger;

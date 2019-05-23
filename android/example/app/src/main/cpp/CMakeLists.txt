@@ -1,12 +1,13 @@
 cmake_minimum_required(VERSION 3.4.1)
+add_definitions(-DNDEBUG -D_USRDLL -DMDNS_DEBUGMSGS=0 -DWIN32_LEAN_AND_MEAN -DUSE_TCP_LOOPBACK -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1 -DNOT_HAVE_SA_LEN)
 
-add_subdirectory(src/main/cpp/lib/crypto)
-add_subdirectory(src/main/cpp/lib/curve25519)
-add_subdirectory(src/main/cpp/lib/ed25519)
-add_subdirectory(src/main/cpp/lib/playfair)
-add_subdirectory(src/main/cpp/lib/plist)
-add_subdirectory(src/main/cpp/lib/fdk-aac)
-add_subdirectory(src/main/cpp/lib)
+add_subdirectory(lib/crypto)
+add_subdirectory(lib/curve25519)
+add_subdirectory(lib/ed25519)
+add_subdirectory(lib/playfair)
+add_subdirectory(lib/plist)
+add_subdirectory(lib/fdk-aac)
+add_subdirectory(lib)
 
 include_directories(lib
         lib/fdk-aac/libAACdec/include
@@ -23,16 +24,15 @@ include_directories(lib
         lib/fdk-aac/libDRCdec/include
         lib/fdk-aac/libSACdec/include
         lib/fdk-aac/libSACenc/include)
-add_library( raop_server
-        SHARED
-        src/main/cpp/jni_raop_server.cpp )
-add_subdirectory(src/main/cpp/mDNSResponder)
-find_library( log-lib
-              log )
-
+#add_library( raop_server SHARED airplay_server.cpp )
+add_executable( raop_server raop_server.cpp)
+add_subdirectory(mDNSResponder)
+#find_library( log-lib
+ #             log )
+find_library(WS2_32_LIBRARY ws2_32)
 target_link_libraries( raop_server
-                       ${log-lib}
         play-lib
         jdns_sd
         ed25519
-        fdk-aac)
+        fdk-aac
+		ws2_32)

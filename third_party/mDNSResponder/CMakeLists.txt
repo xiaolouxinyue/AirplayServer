@@ -27,3 +27,8 @@ else()
             mDNSShared/dnssd_ipc.c
             JNISupport.c)
 endif()
+
+
+target_include_directories(play-lib
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mDNSShared>)

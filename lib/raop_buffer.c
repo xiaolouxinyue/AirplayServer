@@ -22,12 +22,10 @@
 
 #include <stdint.h>
 #include <sha512.h>
+#include <aacdecoder_lib.h>
 #include "crypto/crypto.h"
 #include "aes.h"
 #include "compat.h"
-#include "fdk-aac/libAACdec/include/aacdecoder_lib.h"
-#include "fdk-aac/libFDK/include/clz.h"
-#include "fdk-aac/libSYS/include/FDK_audio.h"
 #include "stream.h"
 #include "aac_decoder.h"
 
