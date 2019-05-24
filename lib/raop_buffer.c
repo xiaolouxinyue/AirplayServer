@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <math.h>
 
 #include "raop_buffer.h"
 #include "raop_rtp.h"

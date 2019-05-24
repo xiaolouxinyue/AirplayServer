@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.4.1)
 
+set(MDNS_LIB_PATH    ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/mDNSResponder)
+set(FDK_AAC_LIB_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/fdk-aac)
+
+add_subdirectory(${MDNS_LIB_PATH} build_mdns)
 add_subdirectory(crypto)
 add_subdirectory(curve25519)
 add_subdirectory(ed25519)
@@ -30,12 +34,12 @@ aux_source_directory(. play_src)
 set(DIR_SRCS ${play_src})
 
 if(WIN32)
-    add_library( play-lib
+    add_library( raopserver
             STATIC
             ${DIR_SRCS}
             )
 else()
-    add_library( play-lib
+    add_library( raopserver
             SHARED
             ${DIR_SRCS}
             )
@@ -44,7 +48,7 @@ endif()
 if(ANDROID)
     find_library( log-lib
             log )
-    target_link_libraries( play-lib
+    target_link_libraries( raopserver
             crypto
             curve25519
             ed25519
@@ -54,7 +58,7 @@ if(ANDROID)
             jdns_sd
             ${log-lib})
 else()
-    target_link_libraries( play-lib
+    target_link_libraries( raopserver
             crypto
             curve25519
             ed25519
@@ -65,6 +69,6 @@ else()
 endif()
 
 
-target_include_directories(play-lib
+target_include_directories(raopserver
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)

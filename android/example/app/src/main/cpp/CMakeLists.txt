@@ -31,7 +31,7 @@ add_subdirectory(mDNSResponder)
  #             log )
 find_library(WS2_32_LIBRARY ws2_32)
 target_link_libraries( raop_server
-        play-lib
+        raopserver
         jdns_sd
         ed25519
         fdk-aac

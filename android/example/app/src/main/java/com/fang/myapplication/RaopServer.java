@@ -35,8 +35,7 @@ import com.fang.myapplication.player.VideoPlayer;
 public class RaopServer implements SurfaceHolder.Callback {
 
     static {
-        System.loadLibrary("raop_server");
-        System.loadLibrary("play-lib");
+        System.loadLibrary("raopserver_android");
     }
     private static final String TAG = "RaopServer";
     private VideoPlayer mVideoPlayer;

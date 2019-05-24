@@ -28,7 +28,6 @@ else()
             JNISupport.c)
 endif()
 
-
-target_include_directories(play-lib
+target_include_directories(jdns_sd
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/mDNSShared>)

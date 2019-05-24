@@ -20,7 +20,6 @@
 #include "aes.h"
 #include "compat.h"
 #include "ed25519/sha512.h"
-#include <math.h>
 #include <malloc.h>
 #include <assert.h>
 // #define DUMP_KEI_IV
