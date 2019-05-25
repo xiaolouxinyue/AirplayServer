@@ -2,11 +2,6 @@
 #define RAOP_H
 
 #include "stream.h"
-#if defined (_WIN32) && defined(DLL_EXPORT)
-# define RAOP_API __declspec(dllexport)
-#else
-# define RAOP_API
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,18 +42,18 @@ struct raop_callbacks_s {
 };
 typedef struct raop_callbacks_s raop_callbacks_t;
 
-RAOP_API raop_t *raop_init(int max_clients, raop_callbacks_t *callbacks);
+raop_t *raop_init(int max_clients, raop_callbacks_t *callbacks);
 
-RAOP_API void raop_set_log_level(raop_t *raop, int level);
-RAOP_API void raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls);
-RAOP_API void raop_set_port(raop_t *raop, unsigned short port);
-RAOP_API unsigned short raop_get_port(raop_t *raop);
-RAOP_API void *raop_get_callback_cls(raop_t *raop);
-RAOP_API int raop_start(raop_t *raop, unsigned short *port);
-RAOP_API int raop_is_running(raop_t *raop);
-RAOP_API void raop_stop(raop_t *raop);
+void raop_set_log_level(raop_t *raop, int level);
+void raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls);
+void raop_set_port(raop_t *raop, unsigned short port);
+unsigned short raop_get_port(raop_t *raop);
+void *raop_get_callback_cls(raop_t *raop);
+int raop_start(raop_t *raop, unsigned short *port);
+int raop_is_running(raop_t *raop);
+void raop_stop(raop_t *raop);
 
-RAOP_API void raop_destroy(raop_t *raop);
+void raop_destroy(raop_t *raop);
 
 #ifdef __cplusplus
 }
