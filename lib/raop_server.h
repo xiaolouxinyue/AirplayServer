@@ -25,38 +25,36 @@
 #ifndef AIRPLAYSERVER_RAOP_SERVER_H
 #define AIRPLAYSERVER_RAOP_SERVER_H
 
-#include <iostream>
-#include "raop.h"
-#include "dnssd.h"
+#include "stream.h"
 
-//#if defined (_WIN32) && defined(DLL_EXPORT)
-//# define RAOP_SERVER_API __declspec(dllexport)
-//#else
-//# define RAOP_SERVER_API
-//#endif
+#if defined (_WIN32)
+# define RAOP_SERVER_API __declspec(dllexport)
+#else
+# define RAOP_SERVER_API
+#endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 typedef struct {
     float volume;
 } audio_session_t;
 
-typedef void (*AudioDataCallback)(void *cls, void *session, pcm_data_struct *data);
-typedef void (*VideoDataCallback)(void *cls, h264_decode_struct *data);
+typedef struct raop_server_s raop_server_t;
 
-class RaopServer {
-private:
-    raop_t* raop_;
-    dnssd_t* dnssd_;
-    std::string device_name_;
-    char* hw_addr_;
-    int hw_addr_len_;
+typedef void (*audio_data_callback)(void *cls, void *session, pcm_data_struct *data);
+typedef void (*video_data_callback)(void *cls, h264_decode_struct *data);
 
-public:
-    RaopServer(const std::string& device_name, char* hw_addr, int& hw_addr_len);
-    ~RaopServer();
-    int StartServer(void* cls, AudioDataCallback audio_data_callback, VideoDataCallback video_data_callback);
-    void StopServer();
-    void* GetRaopCls();
-    int GetRaopPort();
-};
+raop_server_t *
+raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback);
+int raop_server_start(raop_server_t *raop_server, const char *device_name, char *hw_addr,
+                      int hw_addr_len);
+int raop_server_get_port(raop_server_t *raop_server);
+void *raop_server_get_cls(raop_server_t *raop_server);
+void raop_server_stop(raop_server_t *raop_server);
+void raop_server_destroy(raop_server_t *raop_server);
+#ifdef __cplusplus
+}
+#endif
 
 #endif //AIRPLAYSERVER_RAOP_SERVER_H

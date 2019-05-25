@@ -97,8 +97,8 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
     jbyte *hw_addr = env->GetByteArrayElements(hwAddr, 0);
     jsize hw_addr_len = env->GetArrayLength(hwAddr);
     void* cls = (void *) env->NewGlobalRef(object);
-    RaopServer* raop_server = new RaopServer(device_name, (char*) hw_addr, hw_addr_len);
-    raop_server->StartServer(cls, audio_process, video_process);
+    raop_server_t* raop_server = raop_server_init(cls, audio_process, video_process);
+    raop_server_start(raop_server, device_name, (char*) hw_addr, hw_addr_len);
     env->ReleaseByteArrayElements(hwAddr, hw_addr, 0);
     env->ReleaseStringUTFChars(deviceName, device_name);
     return (jlong) (void *) raop_server;
@@ -106,14 +106,14 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
 
 extern "C" JNIEXPORT jint JNICALL
 Java_com_fang_myapplication_RaopServer_getPort(JNIEnv* env, jobject object, jlong opaque) {
-    auto* raop_server = (RaopServer *) (void *) opaque;
-    return raop_server->GetRaopPort();
+    auto * raop_server = (raop_server_t *) (void *) opaque;
+    return raop_server_get_port(raop_server);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_fang_myapplication_RaopServer_stop(JNIEnv* env, jobject object, jlong opaque) {
-    auto* raop_server = (RaopServer *) (void *) opaque;
-    auto obj = (jobject) raop_server->GetRaopCls();
+    auto * raop_server = (raop_server_t *) (void *) opaque;
+    auto obj = (jobject) raop_server_get_cls(raop_server);
     env->DeleteGlobalRef(obj);
-    raop_server->StopServer();
+    raop_server_destroy(raop_server);
 }

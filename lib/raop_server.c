@@ -26,8 +26,9 @@
 #include "log.h"
 #include "dnssd.h"
 #include "logger.h"
-#include <iostream>
-#include <cmath>
+#include "raop.h"
+#include <malloc.h>
+#include <math.h>
 
 static void *
 audio_init(void *cls)
@@ -40,15 +41,15 @@ audio_init(void *cls)
 static void
 audio_destroy(void *cls, void *opaque)
 {
-    auto *session = (audio_session_t *)opaque;
+    audio_session_t *session = (audio_session_t *)opaque;
     free(session);
 }
 // 处理音量变化
 static void
 audio_set_volume(void *cls, void *opaque, float volume)
 {
-    auto *session = (audio_session_t *)opaque;
-    session->volume = pow(10.0, 0.05*volume);
+    audio_session_t *session = (audio_session_t *)opaque;
+    session->volume = powf(10.0, 0.05 * volume);
 }
 
 static void
@@ -74,63 +75,84 @@ log_callback(void *cls, int level, const char *msg) {
     }
 }
 
-RaopServer::RaopServer(const std::string& device_name, char* hw_addr, int& hw_addr_len)
-    :device_name_(device_name),
-    hw_addr_(hw_addr),
-    hw_addr_len_(hw_addr_len){}
+struct raop_server_s {
+    raop_t* raop;
+    dnssd_t* dnssd;
 
-RaopServer::~RaopServer() {
+};
 
-}
-
-int RaopServer::StartServer(void *cls, AudioDataCallback audio_data_callback, VideoDataCallback video_data_callback) {
+raop_server_t*
+raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback)
+{
+    raop_server_t* raop_server;
+    raop_server = (raop_server_t* ) calloc(1, sizeof(raop_server_t));
+    if (!raop_server) {
+        return NULL;
+    }
     raop_callbacks_t raop_cbs;
     memset(&raop_cbs, 0, sizeof(raop_cbs));
     raop_cbs.cls = cls;
     raop_cbs.audio_init = audio_init;
-    raop_cbs.audio_process = audio_data_callback;
+    raop_cbs.audio_process = audio_callback;
     raop_cbs.audio_destroy = audio_destroy;
     raop_cbs.audio_set_volume = audio_set_volume;
-    raop_cbs.video_process = video_data_callback;
-    raop_ = raop_init(10, &raop_cbs);
-    if (raop_ == NULL) {
+    raop_cbs.video_process = video_callback;
+    raop_server->raop = raop_init(10, &raop_cbs);
+    if (raop_server->raop == NULL) {
         LOGE("raop = NULL");
-        return -1;
-    }
-    else {
+        free(raop_server);
+        return NULL;
+    } else {
         LOGD("raop init success");
     }
-    raop_set_log_callback(raop_, log_callback, NULL);
-    raop_set_log_level(raop_, RAOP_LOG_DEBUG);
+    raop_set_log_callback(raop_server->raop, log_callback, NULL);
+    raop_set_log_level(raop_server->raop, RAOP_LOG_DEBUG);
+    return raop_server;
+}
+
+int
+raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_addr, int hw_addr_len)
+{
     unsigned short port = 0;
-    raop_start(raop_, &port);
-    raop_set_port(raop_, port);
+    raop_start(raop_server->raop, &port);
+    raop_set_port(raop_server->raop, port);
     int error;
-    dnssd_ = dnssd_init(device_name_.c_str(), hw_addr_, hw_addr_len_, &error);
-    if (dnssd_ == NULL) {
+    raop_server->dnssd = dnssd_init(device_name, hw_addr, hw_addr_len, &error);
+    if (raop_server->dnssd == NULL) {
         LOGD("dnssd init error = %d", error);
-        raop_destroy(raop_);
+        raop_stop(raop_server->raop);
         return -1;
     }
-    dnssd_register_raop(dnssd_, port);
-    dnssd_register_airplay(dnssd_, port + 1);
+    dnssd_register_raop(raop_server->dnssd, port);
+    dnssd_register_airplay(raop_server->dnssd, port + 1);
     LOGD("raop port = %d, airplay port = %d", port, port + 1);
-    return 0;
 }
 
-void RaopServer::StopServer() {
-    raop_destroy(raop_);
-    dnssd_unregister_raop(dnssd_);
-    dnssd_unregister_airplay(dnssd_);
-    dnssd_destroy(dnssd_);
+int
+raop_server_get_port(raop_server_t* raop_server)
+{
+    return raop_get_port(raop_server->raop);
 }
 
-void *RaopServer::GetRaopCls() {
-    return raop_get_callback_cls(raop_);
+void*
+raop_server_get_cls(raop_server_t* raop_server)
+{
+    raop_get_callback_cls(raop_server->raop);
 }
 
-int RaopServer::GetRaopPort() {
-    return raop_get_port(raop_);
+void
+raop_server_stop(raop_server_t* raop_server)
+{
+    raop_stop(raop_server->raop);
+    dnssd_unregister_raop(raop_server->dnssd);
+    dnssd_unregister_airplay(raop_server->dnssd);
+    dnssd_destroy(raop_server->dnssd);
 }
 
-
+void
+raop_server_destroy(raop_server_t* raop_server)
+{
+    raop_server_stop(raop_server);
+    raop_destroy(raop_server->raop);
+    free(raop_server);
+}
