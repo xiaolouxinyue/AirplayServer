@@ -268,7 +268,7 @@ raop_buffer_queue(raop_buffer_t *raop_buffer, unsigned char *data, unsigned shor
     entry->ssrc = (data[8] << 24) | (data[9] << 16) |
                   (data[10] << 8) | data[11];
     entry->available = 1;
-
+	//logger_log(raop_buffer->logger, LOGGER_DEBUG, "rtp audio data_timestamp = %u", entry->timestamp);
     encryptedlen = payloadsize/16*16;
     unsigned char *packetbuf = malloc(payloadsize);
     if (!packetbuf) {

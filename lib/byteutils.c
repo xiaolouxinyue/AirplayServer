@@ -40,7 +40,7 @@ uint64_t byteutils_get_long(unsigned char* b, int offset) {
     return (byteutils_get_int2(b, offset + 4)) << 32 | byteutils_get_int2(b, offset);
 }
 
-//s -> us
+//s -> us rtp time from 1970
 uint64_t ntptopts(uint64_t ntp) {
     return (((ntp >> 32) & 0xffffffff)* 1000000) + ((ntp & 0xffffffff) * 1000 * 1000 / INT_32_MAX) ;
 }
@@ -48,7 +48,7 @@ uint64_t ntptopts(uint64_t ntp) {
 uint64_t byteutils_read_int(unsigned char* b, int offset) {
     return ((uint64_t)b[offset]  << 24) | ((uint64_t)b[offset + 1]  << 16) | ((uint64_t)b[offset + 2] << 8) | ((uint64_t)b[offset + 3]  << 0);
 }
-//s->us
+//s->us ntp time form 1900
 uint64_t byteutils_read_timeStamp(unsigned char* b, int offset) {
     return (byteutils_read_int(b, offset) * 1000000) + ((byteutils_read_int(b, offset + 4) * 1000000) / INT_32_MAX);
 }

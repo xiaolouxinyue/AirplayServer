@@ -405,6 +405,8 @@ raop_rtp_thread_time(void *arg)
         /* 25-32 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
         uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 24);
 
+        //logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
+
         /* FIXME: 先简单这样写吧 */
         rec_pts = Receive_Timestamp;
 
@@ -489,7 +491,21 @@ raop_rtp_thread_udp(void *arg)
                 assert(ret >= 0);
 
             } else if (type_c == 0x54) {
-                /* TODO: 暂时不处理 */
+                /**
+                 * packetlen = 20
+                 * bytes	description
+                    8	RTP header without SSRC
+                    8	current NTP time
+                    4	RTP timestamp for the next audio packet
+                 */
+                uint64_t ntp_time = byteutils_read_timeStamp(packet, 8);
+                unsigned int rtp_timestamp = (packet[4] << 24) | (packet[5] << 16) |
+                        (packet[6] << 8) | packet[7];
+                unsigned int next_timestamp = (packet[16] << 24) | (packet[17] << 16) |
+                        (packet[18] << 8) | packet[19];
+                //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio ntp time = %llu", ntp_time);
+                //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio rtp_timestamp = %u", rtp_timestamp);
+                //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio next_timestamp = %u", next_timestamp);
 
             } else {
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");

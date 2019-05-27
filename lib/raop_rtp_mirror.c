@@ -189,10 +189,9 @@ raop_rtp_mirror_thread_time(void *arg)
         uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 32);
         /* 40-48 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
         uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 40);
-
         /* FIXME: 先简单这样写吧 */
-        rec_pts = Receive_Timestamp;
-
+        rec_pts = Transmit_Timestamp;
+        //logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
         if (first == 0) {
             first++;
         } else {
@@ -323,6 +322,8 @@ raop_rtp_mirror_thread(void *arg)
                 /* 处理内容数据 */
                 if (payloadtype == 0) {
                     uint64_t payloadntp = byteutils_get_long(packet, 8);
+                    /* from 1970 */
+                    //logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "video data ntp time = %llu", ntptopts(payloadntp));
                     /* 读取时间 */
                     if (pts_base == 0) {
                         pts_base = ntptopts(payloadntp);
