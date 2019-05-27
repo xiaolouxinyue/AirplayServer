@@ -29,6 +29,7 @@
 #include "raop.h"
 #include <malloc.h>
 #include <math.h>
+#include "threads.h"
 
 static void *
 audio_init(void *cls)
@@ -78,7 +79,8 @@ log_callback(void *cls, int level, const char *msg) {
 struct raop_server_s {
     raop_t* raop;
     dnssd_t* dnssd;
-
+    int running;
+    mutex_handle_t run_mutex;
 };
 
 raop_server_t*
@@ -107,12 +109,19 @@ raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callb
     }
     raop_set_log_callback(raop_server->raop, log_callback, NULL);
     raop_set_log_level(raop_server->raop, RAOP_LOG_DEBUG);
+    raop_server->running = 0;
+    MUTEX_CREATE(raop_server->run_mutex);
     return raop_server;
 }
 
 int
 raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_addr, int hw_addr_len)
 {
+    MUTEX_LOCK(raop_server->run_mutex);
+    if (raop_server->running) {
+        MUTEX_UNLOCK(raop_server->run_mutex);
+        return 0;
+    }
     unsigned short port = 0;
     raop_start(raop_server->raop, &port);
     raop_set_port(raop_server->raop, port);
@@ -121,11 +130,15 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
     if (raop_server->dnssd == NULL) {
         LOGD("dnssd init error = %d", error);
         raop_stop(raop_server->raop);
+        MUTEX_UNLOCK(raop_server->run_mutex);
         return -1;
     }
     dnssd_register_raop(raop_server->dnssd, port);
     dnssd_register_airplay(raop_server->dnssd, port + 1);
     LOGD("raop port = %d, airplay port = %d", port, port + 1);
+    raop_server->running = 1;
+    MUTEX_UNLOCK(raop_server->run_mutex);
+    return 0;
 }
 
 int
@@ -143,16 +156,24 @@ raop_server_get_cls(raop_server_t* raop_server)
 void
 raop_server_stop(raop_server_t* raop_server)
 {
+    MUTEX_LOCK(raop_server->run_mutex);
+    if (!raop_server->running) {
+        MUTEX_UNLOCK(raop_server->run_mutex);
+        return;
+    }
+    raop_server->running = 0;
     raop_stop(raop_server->raop);
     dnssd_unregister_raop(raop_server->dnssd);
     dnssd_unregister_airplay(raop_server->dnssd);
     dnssd_destroy(raop_server->dnssd);
+    MUTEX_UNLOCK(raop_server->run_mutex);
 }
 
 void
 raop_server_destroy(raop_server_t* raop_server)
 {
     raop_server_stop(raop_server);
+    MUTEX_DESTROY(raop_server->run_mutex);
     raop_destroy(raop_server->raop);
     free(raop_server);
 }
