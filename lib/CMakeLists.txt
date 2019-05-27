@@ -58,6 +58,7 @@ if(ANDROID)
             jdns_sd
             ${log-lib})
 else()
+    find_library(WS2_32_LIBRARY ws2_32)
     target_link_libraries( raopserver
             crypto
             curve25519
@@ -65,7 +66,8 @@ else()
             playfair
             plist
             fdk-aac
-            jdns_sd)
+            jdns_sd
+            ws2_32)
 endif()
 
 

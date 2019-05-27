@@ -29,15 +29,12 @@
 #include <vector>
 #include <fstream>
 #include <stddef.h>
-#include "lib/raop.h"
-#include "lib/dnssd.h"
 #include "log.h"
-#include "lib/stream.h"
-#include "lib/logger.h"
 #include <malloc.h>
 #include <cstring>
 #include <math.h>
 #include "raop_server.h"
+#include <windows.h>
 
 extern "C" void
 audio_process(void *cls, void *opaque, pcm_data_struct *data)
@@ -47,7 +44,6 @@ audio_process(void *cls, void *opaque, pcm_data_struct *data)
         data->data[i] = data->data[i] * session->volume;
     }   
 }
-
 
 extern "C" void
 video_process(void *cls, h264_decode_struct *data)
@@ -72,10 +68,9 @@ int main(int argc, char* argv[]) {
 	SignalHandlerPointer previousHandler;
 	char hw_addr[] = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 	int hw_addr_len = sizeof(hw_addr);
-
-	RaopServer* raop_server = new RaopServer("a", hw_addr, hw_addr_len);
-
-	if (raop_server->StartServer(NULL, audio_process, video_process) != 0) {
+	raop_server_t* raop_server = raop_server_init(NULL, audio_process, video_process);
+	
+	if (raop_server_start(raop_server, "win32", (char*)hw_addr, hw_addr_len) != 0) {
 		return 1;
 	}
 	LOGI("starting...");
@@ -83,6 +78,6 @@ int main(int argc, char* argv[]) {
 	while (is_running) {
 		Sleep(100);
 	}
-	raop_server->StopServer();
+	raop_server_destroy(raop_server);
 	return 0;
 }
