@@ -77,10 +77,10 @@ struct raop_rtp_s {
 
     int flush;
     thread_handle_t thread;
-    thread_handle_t thread_time;
+    //thread_handle_t thread_time;
     mutex_handle_t run_mutex;
-    mutex_handle_t time_mutex;
-    cond_handle_t time_cond;
+    //mutex_handle_t time_mutex;
+    //cond_handle_t time_cond;
     /* MUTEX LOCKED VARIABLES END */
 
     /* Remote control and timing ports */
@@ -99,6 +99,11 @@ struct raop_rtp_s {
     struct sockaddr_storage control_saddr;
     socklen_t control_saddr_len;
     unsigned short control_seqnum;
+
+    /* 同步时间:sync_time是1970开始的真实时间,sync_timestamp是sync_time对应的rtp_timestamp */
+    uint64_t sync_time;
+    unsigned int sync_timestamp;
+
 };
 
 static int
@@ -160,8 +165,8 @@ raop_rtp_init(logger_t *logger, raop_callbacks_t *callbacks, const unsigned char
     raop_rtp->flush = NO_FLUSH;
 
     MUTEX_CREATE(raop_rtp->run_mutex);
-    MUTEX_CREATE(raop_rtp->time_mutex);
-    COND_CREATE(raop_rtp->time_cond);
+    //MUTEX_CREATE(raop_rtp->time_mutex);
+    //COND_CREATE(raop_rtp->time_cond);
     return raop_rtp;
 }
 
@@ -172,8 +177,8 @@ raop_rtp_destroy(raop_rtp_t *raop_rtp)
     if (raop_rtp) {
         raop_rtp_stop(raop_rtp);
         MUTEX_DESTROY(raop_rtp->run_mutex);
-        MUTEX_DESTROY(raop_rtp->time_mutex);
-        COND_DESTROY(raop_rtp->time_cond);
+        //MUTEX_DESTROY(raop_rtp->time_mutex);
+        //COND_DESTROY(raop_rtp->time_cond);
         raop_buffer_destroy(raop_rtp->buffer);
         free(raop_rtp->metadata);
         free(raop_rtp->coverart);
@@ -359,77 +364,77 @@ raop_rtp_process_events(raop_rtp_t *raop_rtp, void *cb_data)
     }
     return 0;
 }
-
-static THREAD_RETVAL
-raop_rtp_thread_time(void *arg)
-{
-    raop_rtp_t *raop_rtp = arg;
-    assert(raop_rtp);
-    struct sockaddr_storage saddr;
-    socklen_t saddrlen;
-    unsigned char packet[128];
-    unsigned int packetlen;
-    unsigned char time[32]={0x80,0xd2,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-            ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
-    };
-    uint64_t base = now_us();
-    uint64_t rec_pts = 0;
-    while (1) {
-        MUTEX_LOCK(raop_rtp->run_mutex);
-        if (!raop_rtp->running) {
-            MUTEX_UNLOCK(raop_rtp->run_mutex);
-            break;
-        }
-        MUTEX_UNLOCK(raop_rtp->run_mutex);
-        uint64_t send_time = now_us() - base + rec_pts;
-
-        byteutils_put_timeStamp(time, 24, send_time);
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time send time 32 bytes, port = %d", raop_rtp->timing_rport);
-        struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp->remote_saddr;
-        addr->sin_port = htons(raop_rtp->timing_rport);
-        int sendlen = sendto(raop_rtp->tsock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp->remote_saddr, raop_rtp->remote_saddr_len);
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time sendlen = %d", sendlen);
-
-        saddrlen = sizeof(saddr);
-        packetlen = recvfrom(raop_rtp->tsock, (char *)packet, sizeof(packet), 0,
-                             (struct sockaddr *)&saddr, &saddrlen);
-        int type_t = packet[1] & ~0x80;
-        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time receive time type_t 0x%02x, packetlen = %d", type_t, packetlen);
-        if (type_t == 0x53) {
-
-        }
-        /* 9-16 NTP请求报文离开发送端时发送端的本地时间。  T1 */
-        uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 8);
-        /* 17-24 NTP请求报文到达接收端时接收端的本地时间。 T2 */
-        uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 16);
-        /* 25-32 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
-        uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 24);
-
-        //logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
-
-        /* FIXME: 先简单这样写吧 */
-        rec_pts = Receive_Timestamp;
-
-#ifdef _WIN32
-        MUTEX_LOCK(raop_rtp->time_mutex);
-        WaitForSingleObject(&raop_rtp->time_cond, 3000);
-        MUTEX_UNLOCK(raop_rtp->time_mutex);
-#else
-        struct timeval now;
-        struct timespec outtime;
-        MUTEX_LOCK(raop_rtp->time_mutex);
-        gettimeofday(&now, NULL);
-        outtime.tv_sec = now.tv_sec + 3;
-        outtime.tv_nsec = now.tv_usec * 1000;
-        int ret = pthread_cond_timedwait(&raop_rtp->time_cond, &raop_rtp->time_mutex, &outtime);
-        MUTEX_UNLOCK(raop_rtp->time_mutex);
-#endif
-
-    }
-
-    logger_log(raop_rtp->logger, LOGGER_INFO, "Exiting UDP raop_rtp_thread_time thread");
-    return 0;
-}
+/* 目前用不到先注释 */
+//static THREAD_RETVAL
+//raop_rtp_thread_time(void *arg)
+//{
+//    raop_rtp_t *raop_rtp = arg;
+//    assert(raop_rtp);
+//    struct sockaddr_storage saddr;
+//    socklen_t saddrlen;
+//    unsigned char packet[128];
+//    unsigned int packetlen;
+//    unsigned char time[32]={0x80,0xd2,0x00,0x07,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+//            ,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
+//    };
+//    uint64_t base = now_us();
+//    uint64_t rec_pts = 0;
+//    while (1) {
+//        MUTEX_LOCK(raop_rtp->run_mutex);
+//        if (!raop_rtp->running) {
+//            MUTEX_UNLOCK(raop_rtp->run_mutex);
+//            break;
+//        }
+//        MUTEX_UNLOCK(raop_rtp->run_mutex);
+//        uint64_t send_time = now_us() - base + rec_pts;
+//
+//        byteutils_put_timeStamp(time, 24, send_time);
+//        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time send time 32 bytes, port = %d", raop_rtp->timing_rport);
+//        struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp->remote_saddr;
+//        addr->sin_port = htons(raop_rtp->timing_rport);
+//        int sendlen = sendto(raop_rtp->tsock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp->remote_saddr, raop_rtp->remote_saddr_len);
+//        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time sendlen = %d", sendlen);
+//
+//        saddrlen = sizeof(saddr);
+//        packetlen = recvfrom(raop_rtp->tsock, (char *)packet, sizeof(packet), 0,
+//                             (struct sockaddr *)&saddr, &saddrlen);
+//        int type_t = packet[1] & ~0x80;
+//        logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time receive time type_t 0x%02x, packetlen = %d", type_t, packetlen);
+//        if (type_t == 0x53) {
+//
+//        }
+//        /* 9-16 NTP请求报文离开发送端时发送端的本地时间。  T1 */
+//        uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 8);
+//        /* 17-24 NTP请求报文到达接收端时接收端的本地时间。 T2 */
+//        uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 16);
+//        /* 25-32 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
+//        uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 24);
+//
+//        //logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
+//
+//        /* FIXME: 先简单这样写吧 */
+//        rec_pts = Receive_Timestamp;
+//
+//#ifdef _WIN32
+//        MUTEX_LOCK(raop_rtp->time_mutex);
+//        WaitForSingleObject(&raop_rtp->time_cond, 3000);
+//        MUTEX_UNLOCK(raop_rtp->time_mutex);
+//#else
+//        struct timeval now;
+//        struct timespec outtime;
+//        MUTEX_LOCK(raop_rtp->time_mutex);
+//        gettimeofday(&now, NULL);
+//        outtime.tv_sec = now.tv_sec + 3;
+//        outtime.tv_nsec = now.tv_usec * 1000;
+//        int ret = pthread_cond_timedwait(&raop_rtp->time_cond, &raop_rtp->time_mutex, &outtime);
+//        MUTEX_UNLOCK(raop_rtp->time_mutex);
+//#endif
+//
+//    }
+//
+//    logger_log(raop_rtp->logger, LOGGER_INFO, "Exiting UDP raop_rtp_thread_time thread");
+//    return 0;
+//}
 
 static THREAD_RETVAL
 raop_rtp_thread_udp(void *arg)
@@ -506,7 +511,9 @@ raop_rtp_thread_udp(void *arg)
                 //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio ntp time = %llu", ntp_time);
                 //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio rtp_timestamp = %u", rtp_timestamp);
                 //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio next_timestamp = %u", next_timestamp);
-
+                /* ntp_time和rtp_timestamp 用于音画同步 */
+                raop_rtp->sync_time = ntp_time - OFFSET_1900_TO_1970 * 1000000;
+                raop_rtp->sync_timestamp = rtp_timestamp;
             } else {
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");
             }
@@ -527,15 +534,16 @@ raop_rtp_thread_udp(void *arg)
                 int buf_ret;
                 const void *audiobuf;
                 int audiobuflen;
-                unsigned int pts;
+                unsigned int timestamp;
                 buf_ret = raop_buffer_queue(raop_rtp->buffer, packet, packetlen, &raop_rtp->callbacks);
                 assert(buf_ret >= 0);
                 /* Decode all frames in queue */
-                while ((audiobuf = raop_buffer_dequeue(raop_rtp->buffer, &audiobuflen, &pts, no_resend))) {
+                while ((audiobuf = raop_buffer_dequeue(raop_rtp->buffer, &audiobuflen, &timestamp, no_resend))) {
                     pcm_data_struct pcm_data;
                     pcm_data.data_len = 960;
                     pcm_data.data = audiobuf;
-                    pcm_data.pts = pts;
+                    /* 根据sync_time和sync_timestamp计算timestamp对应的pts */
+                    pcm_data.pts = (uint64_t) (timestamp - raop_rtp->sync_timestamp) * 1000000 / 44100 + raop_rtp->sync_time;
                     raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, cb_data, &pcm_data);
                 }
                 /* Handle possible resend requests */
@@ -586,7 +594,7 @@ raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_r
     raop_rtp->joined = 0;
 
     THREAD_CREATE(raop_rtp->thread, raop_rtp_thread_udp, raop_rtp);
-    THREAD_CREATE(raop_rtp->thread_time, raop_rtp_thread_time, raop_rtp);
+    //THREAD_CREATE(raop_rtp->thread_time, raop_rtp_thread_time, raop_rtp);
     MUTEX_UNLOCK(raop_rtp->run_mutex);
 }
 
@@ -709,11 +717,11 @@ raop_rtp_stop(raop_rtp_t *raop_rtp)
     /* Join the thread */
     THREAD_JOIN(raop_rtp->thread);
 
-    MUTEX_LOCK(raop_rtp->time_mutex);
-    COND_SIGNAL(raop_rtp->time_cond);
-    MUTEX_UNLOCK(raop_rtp->time_mutex);
+    //MUTEX_LOCK(raop_rtp->time_mutex);
+    //COND_SIGNAL(raop_rtp->time_cond);
+    //MUTEX_UNLOCK(raop_rtp->time_mutex);
 
-    THREAD_JOIN(raop_rtp->thread_time);
+    //THREAD_JOIN(raop_rtp->thread_time);
     
     if (raop_rtp->csock != -1) closesocket(raop_rtp->csock);
     if (raop_rtp->tsock != -1) closesocket(raop_rtp->tsock);

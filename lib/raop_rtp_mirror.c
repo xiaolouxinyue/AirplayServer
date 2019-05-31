@@ -231,7 +231,7 @@ raop_rtp_mirror_thread(void *arg)
     unsigned char packet[128];
     memset(packet, 0 , 128);
     unsigned int readstart = 0;
-    uint64_t pts_base = 0;
+//    uint64_t pts_base = 0;
     uint64_t pts = 0;
     assert(raop_rtp_mirror);
 
@@ -325,11 +325,13 @@ raop_rtp_mirror_thread(void *arg)
                     /* from 1970 */
                     //logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "video data ntp time = %llu", ntptopts(payloadntp));
                     /* 读取时间 */
-                    if (pts_base == 0) {
-                        pts_base = ntptopts(payloadntp);
-                    } else {
-                        pts =  ntptopts(payloadntp) - pts_base;
-                    }
+//                    if (pts_base == 0) {
+//                        pts_base = ntptopts(payloadntp);
+//                    } else {
+//                        pts =  ntptopts(payloadntp) - pts_base;
+//                    }
+                    /* 直接回调packet中的time，用于同步音频 */
+                    pts =  ntptopts(payloadntp);
                     /* 这里是加密的数据 */
                     unsigned char* payload_in = malloc(payloadsize);
                     unsigned char* payload = malloc(payloadsize);
@@ -375,11 +377,11 @@ raop_rtp_mirror_thread(void *arg)
                     raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, &h264_data);
                     free(payload_in);
                 } else if ((payloadtype & 255) == 1) {
-                    float mWidthSource = byteutils_get_float(packet, 40);
-                    float mHeightSource = byteutils_get_float(packet, 44);
-                    float mWidth = byteutils_get_float(packet, 56);
-                    float mHeight =byteutils_get_float(packet, 60);
-                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "mWidthSource = %f mHeightSource = %f mWidth = %f mHeight = %f", mWidthSource, mHeightSource, mWidth, mHeight);
+                    float width_source = byteutils_get_float(packet, 40);
+                    float height_source = byteutils_get_float(packet, 44);
+                    float width = byteutils_get_float(packet, 56);
+                    float height = byteutils_get_float(packet, 60);
+                    logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "width_source = %f height_source = %f width = %f height = %f", width_source, height_source, width, height);
                     /*int mRotateMode = 0;
 
                     int p = payloadtype >> 8;
@@ -435,8 +437,8 @@ raop_rtp_mirror_thread(void *arg)
                         h264_decode_struct h264_data;
                         h264_data.data_len = sps_pps_len;
                         h264_data.data = sps_pps;
-                        h264_data.width = mWidth;
-                        h264_data.height = mHeight;
+                        h264_data.width = (int) width;
+                        h264_data.height = (int) height;
                         h264_data.pts = 0;
                         raop_rtp_mirror->callbacks.video_process(raop_rtp_mirror->callbacks.cls, &h264_data);
                     }

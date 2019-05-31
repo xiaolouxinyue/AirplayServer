@@ -24,6 +24,7 @@ typedef struct {
     unsigned char *data;
     int data_len;
     unsigned int nTimeStamp;
+    /* from 1970 us */
     uint64_t pts;
     int width;
     int height;
@@ -32,6 +33,7 @@ typedef struct {
 typedef struct {
     short *data;
     int data_len;
-    unsigned int pts;
+    /* from 1970 us */
+    uint64_t pts;
 } pcm_data_struct;
 #endif //AIRPLAYSERVER_STREAM_H
