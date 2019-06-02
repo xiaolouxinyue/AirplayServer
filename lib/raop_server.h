@@ -36,6 +36,13 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define RAOP_SERVER_NOERROR                 0
+#define RAOP_SERVER_ERROR_DNSSD_INIT        1001
+/* MDNS 错误，只区分了服务未运行和其他错误，用作提示 */
+#define RAOP_SERVER_ERROR_DNSSD_NOSERVICE   1002
+#define RAOP_SERVER_ERROR_DNSSD_OTHER       1003
+
 typedef struct {
     float volume;
 } audio_session_t;

@@ -119,14 +119,20 @@ dnssd_register_raop(dnssd_t *dnssd, unsigned short port)
     strncat(servname, dnssd->name, sizeof(servname)-strlen(servname)-1);
     LOGD("servname = %s", servname);
     /* Register the service */
-    DNSServiceRegister(&dnssd->raop_service, 0, 0,
+    DNSServiceErrorType err = DNSServiceRegister(&dnssd->raop_service, 0, 0,
                               servname, "_raop._tcp",
                               "local.", NULL,
                               htons(port),
                               TXTRecordGetLength(&dnssd->raop_record),
                               TXTRecordGetBytesPtr(&dnssd->raop_record),
                               NULL, NULL);
-    return 1;
+    if (err == kDNSServiceErr_NoError) {
+        return DNSSD_ERROR_NOERROR;
+    } else  if (err == kDNSServiceErr_ServiceNotRunning) {
+        return DNSSD_ERROR_NOSERVICE;
+    } else {
+        return DNSSD_ERROR_OTHER;
+    }
 }
 
 int
@@ -152,14 +158,20 @@ dnssd_register_airplay(dnssd_t *dnssd, unsigned short port)
     TXTRecordSetValue(&dnssd->airplay_record, "pi", strlen(AIRPLAY_PI), AIRPLAY_PI);
     LOGD("name = %s", dnssd->name);
     /* Register the service */
-    DNSServiceRegister(&dnssd->airplay_service, 0, 0,
+    DNSServiceErrorType err = DNSServiceRegister(&dnssd->airplay_service, 0, 0,
                               dnssd->name, "_airplay._tcp",
                               "local.", NULL,
                               htons(port),
                               TXTRecordGetLength(&dnssd->airplay_record),
                               TXTRecordGetBytesPtr(&dnssd->airplay_record),
                               NULL, NULL);
-    return 1;
+    if (err == kDNSServiceErr_NoError) {
+        return DNSSD_ERROR_NOERROR;
+    } else  if (err == kDNSServiceErr_ServiceNotRunning) {
+        return DNSSD_ERROR_NOSERVICE;
+    } else {
+        return DNSSD_ERROR_OTHER;
+    }
 }
 
 void

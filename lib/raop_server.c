@@ -131,14 +131,26 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
         LOGD("dnssd init error = %d", error);
         raop_stop(raop_server->raop);
         MUTEX_UNLOCK(raop_server->run_mutex);
-        return -1;
+        return RAOP_SERVER_ERROR_DNSSD_INIT;
     }
-    dnssd_register_raop(raop_server->dnssd, port);
-    dnssd_register_airplay(raop_server->dnssd, port + 1);
+    int err = dnssd_register_raop(raop_server->dnssd, port);
+    if (err == DNSSD_ERROR_NOERROR) {
+        dnssd_register_airplay(raop_server->dnssd, port + 1);
+    } else {
+        raop_stop(raop_server->raop);
+        dnssd_destroy(raop_server->dnssd);
+        MUTEX_UNLOCK(raop_server->run_mutex);
+        if (err == DNSSD_ERROR_NOSERVICE) {
+            return RAOP_SERVER_ERROR_DNSSD_NOSERVICE;
+        } else {
+            return RAOP_SERVER_ERROR_DNSSD_OTHER;
+        }
+    }
+
     LOGD("raop port = %d, airplay port = %d", port, port + 1);
     raop_server->running = 1;
     MUTEX_UNLOCK(raop_server->run_mutex);
-    return 0;
+    return RAOP_SERVER_NOERROR;
 }
 
 int

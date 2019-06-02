@@ -44,20 +44,12 @@ struct raop_s {
     unsigned short port;
 };
 
-typedef enum {
-    SETUP_INITIAL,
-    SETUP_KEY,
-    SETUP_MIRROR_PORT,
-    SETUP_AUDIO_PORT
-} setup_status_t;
-
 struct raop_conn_s {
 	raop_t *raop;
 	raop_rtp_t *raop_rtp;
 	raop_rtp_mirror_t *raop_rtp_mirror;
 	fairplay_t *fairplay;
 	pairing_session_t *pairing;
-    setup_status_t setup_status;
 	unsigned char *local;
 	int locallen;
 
@@ -84,7 +76,6 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
 	conn->raop = raop;
 	conn->raop_rtp = NULL;
 	conn->fairplay = fairplay_init(raop->logger);
-    conn->setup_status = SETUP_INITIAL;
 	if (!conn->fairplay) {
 		free(conn);
 		return NULL;
@@ -196,16 +187,7 @@ conn_request(void *ptr, http_request_t *request, http_response_t **response)
 		}
 	} else if (!strcmp(method, "TEARDOWN")) {
 		http_response_add_header(*response, "Connection", "close");
-		if (conn->raop_rtp) {
-			/* Destroy our RTP session */
-			raop_rtp_destroy(conn->raop_rtp);
-			conn->raop_rtp = NULL;
-		}
-        if (conn->raop_rtp_mirror) {
-            /* Destroy our mirror session */
-            raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
-            conn->raop_rtp_mirror = NULL;
-        }
+        handler = &raop_handler_teardown;
 	}
 	if (handler != NULL) {
 		handler(conn, request, *response, &response_data, &response_datalen);
