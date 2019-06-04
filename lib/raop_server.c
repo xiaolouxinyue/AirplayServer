@@ -154,6 +154,16 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
 }
 
 int
+raop_server_is_running(raop_server_t *raop_server)
+{
+    int running;
+    MUTEX_LOCK(raop_server->run_mutex);
+    running = raop_server->running;
+    MUTEX_UNLOCK(raop_server->run_mutex);
+    return running;
+}
+
+int
 raop_server_get_port(raop_server_t* raop_server)
 {
     return raop_get_port(raop_server->raop);

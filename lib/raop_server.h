@@ -22,6 +22,11 @@
  * SOFTWARE.
  */
 
+/**
+ * 整合了raop和dnssd
+ * dnssd依赖iTunes，使用dnssd之前需要安装iTunes
+ */
+
 #ifndef AIRPLAYSERVER_RAOP_SERVER_H
 #define AIRPLAYSERVER_RAOP_SERVER_H
 
@@ -60,6 +65,9 @@ int raop_server_get_port(raop_server_t *raop_server);
 void *raop_server_get_cls(raop_server_t *raop_server);
 void raop_server_stop(raop_server_t *raop_server);
 void raop_server_destroy(raop_server_t *raop_server);
+int raop_server_is_running(raop_server_t *raop_server);
+
+
 #ifdef __cplusplus
 }
 #endif

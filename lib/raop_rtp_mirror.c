@@ -526,6 +526,17 @@ raop_rtp_start_mirror(raop_rtp_mirror_t *raop_rtp_mirror, int use_udp, unsigned 
     MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
 }
 
+int
+raop_rtp_mirror_is_running(raop_rtp_mirror_t *raop_rtp_mirror)
+{
+    int running;
+    assert(raop_rtp_mirror);
+    MUTEX_LOCK(raop_rtp_mirror->run_mutex);
+    running = raop_rtp_mirror->running || !raop_rtp_mirror->joined;
+    MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
+    return running;
+}
+
 void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     assert(raop_rtp_mirror);
 

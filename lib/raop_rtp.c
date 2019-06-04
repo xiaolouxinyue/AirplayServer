@@ -494,7 +494,6 @@ raop_rtp_thread_udp(void *arg)
                 /* 处理重传的包，去除头部4个字节 */
                 int ret = raop_buffer_queue(raop_rtp->buffer, packet+4, packetlen-4, &raop_rtp->callbacks);
                 assert(ret >= 0);
-
             } else if (type_c == 0x54) {
                 /**
                  * packetlen = 20
@@ -596,6 +595,17 @@ raop_rtp_start_audio(raop_rtp_t *raop_rtp, int use_udp, unsigned short control_r
     THREAD_CREATE(raop_rtp->thread, raop_rtp_thread_udp, raop_rtp);
     //THREAD_CREATE(raop_rtp->thread_time, raop_rtp_thread_time, raop_rtp);
     MUTEX_UNLOCK(raop_rtp->run_mutex);
+}
+
+int
+raop_rtp_is_running(raop_rtp_t *raop_rtp)
+{
+    int running;
+    assert(raop_rtp);
+    MUTEX_LOCK(raop_rtp->run_mutex);
+    running = raop_rtp->running || !raop_rtp->joined;
+    MUTEX_UNLOCK(raop_rtp->run_mutex);
+    return running;
 }
 
 void
