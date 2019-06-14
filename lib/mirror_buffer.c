@@ -20,7 +20,24 @@
 #include "aes.h"
 #include "compat.h"
 #include "ed25519/sha512.h"
-#include <malloc.h>
+
+#ifdef __APPLE__
+    #include "TargetConditionals.h"
+    #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+    // iOS Simulator || iOS device
+        #include <string.h>
+        #include <stdio.h>
+        #include <stdlib.h>
+    #elif TARGET_OS_MAC
+    // Other kinds of Mac OS
+        #include <sys/malloc.h>
+    #else
+    #   error "Unknown Apple platform"
+    #endif
+#else
+    #include <malloc.h>
+#endif
+
 #include <assert.h>
 // #define DUMP_KEI_IV
 struct mirror_buffer_s {

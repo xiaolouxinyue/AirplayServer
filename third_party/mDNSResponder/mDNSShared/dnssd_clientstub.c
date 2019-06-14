@@ -1299,8 +1299,8 @@ static int32_t libSystemVersion = 0;
 // Using 160.0.0 == 0xa00000 as the version threshold.
 static int includeP2PWithIndexAny()
 {
-    if (libSystemVersion == 0)
-        libSystemVersion = NSVersionOfLinkTimeLibrary("System");
+//    if (libSystemVersion == 0)//TODO
+//        libSystemVersion = NSVersionOfLinkTimeLibrary("System");
 
     if (libSystemVersion < 0xa00000)
         return 1;

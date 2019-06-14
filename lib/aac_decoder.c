@@ -22,7 +22,21 @@
  * SOFTWARE.
  */
 
-#include <malloc.h>
+#ifdef __APPLE__
+    #include "TargetConditionals.h"
+    #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+    // iOS Simulator || iOS device
+        #include <stdlib.h>
+    #elif TARGET_OS_MAC
+    // Other kinds of Mac OS
+        #include <sys/malloc.h>
+    #else
+    #   error "Unknown Apple platform"
+    #endif
+#else
+    #include <malloc.h>
+#endif
+
 #include "logger.h"
 #include "aac_decoder.h"
 #include "../third_party/fdk-aac/libAACdec/include/aacdecoder_lib.h"

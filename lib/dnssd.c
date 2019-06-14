@@ -12,7 +12,21 @@
  * Lesser General Public License for more details.
  */
 
-#include <malloc.h>
+#ifdef __APPLE__
+    #include "TargetConditionals.h"
+    #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+    // iOS Simulator || iOS device
+        #include <stdlib.h>
+    #elif TARGET_OS_MAC
+    // Other kinds of Mac OS
+        #include <sys/malloc.h>
+    #else
+    #   error "Unknown Apple platform"
+    #endif
+#else
+    #include <malloc.h>
+#endif
+
 #include <assert.h>
 #ifdef __ANDROID__
 #include <endian.h>

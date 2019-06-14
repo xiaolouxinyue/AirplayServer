@@ -27,7 +27,23 @@
 #include "dnssd.h"
 #include "logger.h"
 #include "raop.h"
-#include <malloc.h>
+
+#ifdef __APPLE__
+    #include "TargetConditionals.h"
+    #if TARGET_IPHONE_SIMULATOR || TARGET_OS_IPHONE
+    // iOS Simulator || iOS device
+        #include <string.h>
+        #include <stdlib.h>
+    #elif TARGET_OS_MAC
+    // Other kinds of Mac OS
+        #include <sys/malloc.h>
+    #else
+    #   error "Unknown Apple platform"
+    #endif
+#else
+    #include <malloc.h>
+#endif
+
 #include <math.h>
 #include "threads.h"
 
