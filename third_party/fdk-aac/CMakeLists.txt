@@ -34,6 +34,24 @@ if(WIN32)
             ${fdk_aac_sac_dec_src}
             ${fdk_aac_sac_enc_src}
       )
+elseif(APPLE)
+    add_library(fdk-aac
+            STATIC
+            ${fdk_aac_dec_src}
+            ${fdk_aac_enc_src}
+            ${fdk_aac_pcm_utils_src}
+            ${fdk_aac_fdk_src}
+            ${fdk_aac_sys_src}
+            ${fdk_aac_mpeg_tp_dec_src}
+            ${fdk_aac_mpeg_tp_enc_src}
+            ${fdk_aac_sbr_dec_src}
+            ${fdk_aac_sbr_enc_src}
+
+            ${fdk_aac_arith_coding_src}
+            ${fdk_aac_drc_dec_src}
+            ${fdk_aac_sac_dec_src}
+            ${fdk_aac_sac_enc_src}
+            )
 else()
     add_library(fdk-aac
             SHARED

@@ -38,6 +38,11 @@ if(WIN32)
             STATIC
             ${DIR_SRCS}
             )
+elseif(APPLE)
+    add_library( raopserver
+            STATIC
+            ${DIR_SRCS}
+            )
 else()
     add_library( raopserver
             SHARED
@@ -57,6 +62,17 @@ if(ANDROID)
             fdk-aac
             jdns_sd
             ${log-lib})
+elseif(APPLE)
+    find_library(WS2_32_LIBRARY ws2_32)
+    target_link_libraries( raopserver
+            crypto
+            curve25519
+            ed25519
+            playfair
+            plist
+            fdk-aac
+            jdns_sd
+            ws2_32)
 else()
     find_library(WS2_32_LIBRARY ws2_32)
     target_link_libraries( raopserver

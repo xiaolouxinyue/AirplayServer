@@ -9,3 +9,10 @@
 /build
 /captures
 .externalNativeBuild
+ios/build
+.vscode
+android/example
+apple
+ios/SDK
+macOS/build
+macOS/SDK
