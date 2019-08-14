@@ -5,14 +5,9 @@ import android.media.MediaCodec;
 import android.media.MediaFormat;
 import android.os.SystemClock;
 import android.util.Log;
-import android.view.Surface;
-
-import androidx.annotation.Nullable;
 
 import com.fang.myapplication.model.NALPacket;
 import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.video.VideoFrameMetadataListener;
-import com.google.android.exoplayer2.video.VideoRendererEventListener;
 
 import java.nio.ByteBuffer;
 
@@ -30,61 +25,10 @@ public class MediaCodecVideoRenderer {
     private static final String KEY_CROP_BOTTOM = "crop-bottom";
     private static final String KEY_CROP_TOP = "crop-top";
 
-    // Long edge length in pixels for standard video formats, in decreasing in order.
-    private static final int[] STANDARD_LONG_EDGE_VIDEO_PX = new int[] {
-            1920, 1600, 1440, 1280, 960, 854, 640, 540, 480};
-
-    // Generally there is zero or one pending output stream offset. We track more offsets to allow for
-    // pending output streams that have fewer frames than the codec latency.
-    private static final int MAX_PENDING_OUTPUT_STREAM_OFFSET_COUNT = 10;
-
-    private static final float INITIAL_FORMAT_MAX_INPUT_SIZE_SCALE_FACTOR = 1.5f;
-
-    private static boolean evaluatedDeviceNeedsSetOutputSurfaceWorkaround;
-    private static boolean deviceNeedsSetOutputSurfaceWorkaround;
-
-    private Context context;
     private VideoFrameReleaseTimeHelper frameReleaseTimeHelper;
-    private VideoRendererEventListener.EventDispatcher eventDispatcher;
-    private long allowedJoiningTimeMs;
-    private int maxDroppedFramesToNotify;
-    private boolean deviceNeedsNoPostProcessWorkaround;
-    private long[] pendingOutputStreamOffsetsUs;
-    private long[] pendingOutputStreamSwitchTimesUs;
-
-    private boolean codecNeedsSetOutputSurfaceWorkaround;
-
-    private Surface surface;
-    private Surface dummySurface;
-    @C.VideoScalingMode
-    private int scalingMode;
     private boolean renderedFirstFrame;
-    private long initialPositionUs = C.TIME_UNSET;
-    private long joiningDeadlineMs;
-    private long droppedFrameAccumulationStartTimeMs;
-    private int droppedFrames;
-    private int consecutiveDroppedFrameCount;
-    private int buffersInCodecCount;
     private long lastRenderTimeUs;
 
-    private int pendingRotationDegrees;
-    private float pendingPixelWidthHeightRatio;
-    private int currentWidth;
-    private int currentHeight;
-    private int currentUnappliedRotationDegrees;
-    private float currentPixelWidthHeightRatio;
-    private int reportedWidth;
-    private int reportedHeight;
-    private int reportedUnappliedRotationDegrees;
-    private float reportedPixelWidthHeightRatio;
-
-    private boolean tunneling;
-    private int tunnelingAudioSessionId;
-
-    private long lastInputTimeUs;
-    private long outputStreamOffsetUs;
-    private int pendingOutputStreamOffsetCount;
-    private @Nullable VideoFrameMetadataListener frameMetadataListener;
 
     private VideoPlayer videoPlayer;
     private long initPositionUs = 0;
@@ -321,7 +265,6 @@ public class MediaCodecVideoRenderer {
         //codec.releaseOutputBuffer(index, releaseTimeNs);
         codec.releaseOutputBuffer(index, true);
         lastRenderTimeUs = SystemClock.elapsedRealtime() * 1000;
-        consecutiveDroppedFrameCount = 0;
         if (!renderedFirstFrame) {
             renderedFirstFrame = true;
         }

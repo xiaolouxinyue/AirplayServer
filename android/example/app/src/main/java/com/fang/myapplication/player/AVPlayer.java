@@ -1,12 +1,9 @@
 package com.fang.myapplication.player;
 
-
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Message;
-import android.os.SystemClock;
-import android.util.Log;
 import android.view.Surface;
 
 import com.fang.myapplication.model.NALPacket;
@@ -69,8 +66,6 @@ public class AVPlayer implements MediaTimeProvider, Handler.Callback {
     private void doSomeWork() {
         mVideoPlayer.doSomeWork();
         mAudioPlayer.doSomeWork();
-        //Log.d("AVSYNC","audio play pts = " + mAudioPlayer.getPteTest());
-
         mHandler.sendEmptyMessageDelayed(MSG_DO_SOME_WORK, 5);
     }
 

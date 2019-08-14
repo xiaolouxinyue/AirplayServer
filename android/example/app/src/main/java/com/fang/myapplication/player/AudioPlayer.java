@@ -190,10 +190,6 @@ public class AudioPlayer {
         firstPts = 0;
     }
 
-    public long getPteTest() {
-        return audioTrackPositionTracker.getCurrentPositionUs(false);
-    }
-
     public long getPositionUs() {
         if (mIsStart && firstPts != 0) {
             Log.d("AVSYNC","use audio pts");
