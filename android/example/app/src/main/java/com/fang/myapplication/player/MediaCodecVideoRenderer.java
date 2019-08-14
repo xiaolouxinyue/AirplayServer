@@ -40,7 +40,6 @@ public class MediaCodecVideoRenderer {
     private int outputIndex = C.INDEX_UNSET;
     private MediaCodec codec;
     private ByteBuffer outputBuffer;
-    private long renderTimeLimitMs;
     private MediaCodec.BufferInfo outputBufferInfo = new MediaCodec.BufferInfo();
 
     private static final String KEY_CROP_LEFT = "crop-left";
@@ -51,7 +50,6 @@ public class MediaCodecVideoRenderer {
     private VideoFrameReleaseTimeHelper frameReleaseTimeHelper;
     private boolean renderedFirstFrame;
     private long lastRenderTimeUs;
-
 
     private VideoPlayer videoPlayer;
     private long initPositionUs = 0;

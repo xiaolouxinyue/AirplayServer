@@ -464,6 +464,7 @@ raop_rtp_mirror_thread(void *arg)
                             ret = recv(stream_fd, payload_in + readstart, payloadsize - readstart, 0);
                             readstart = readstart + ret;
                         } while (readstart < payloadsize);
+                        free(payload_in);
                     }
                 } else if (payloadtype == (short) 4) {
                     readstart = 0;
@@ -473,6 +474,7 @@ raop_rtp_mirror_thread(void *arg)
                             ret = recv(stream_fd, payload_in + readstart, payloadsize - readstart, 0);
                             readstart = readstart + ret;
                         } while (readstart < payloadsize);
+                        free(payload_in);
                     }
                 } else {
                     readstart = 0;
@@ -482,6 +484,7 @@ raop_rtp_mirror_thread(void *arg)
                             ret = recv(stream_fd, payload_in + readstart, payloadsize - readstart, 0);
                             readstart = readstart + ret;
                         } while (readstart < payloadsize);
+                        free(payload_in);
                     }
                 }
             }

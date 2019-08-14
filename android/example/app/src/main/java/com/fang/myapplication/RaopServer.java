@@ -41,10 +41,8 @@ public class RaopServer {
     private long mServerId = 0;
 
     private long mBasePts = 0;
-    private long mStartUs = 0;
     private AVPlayer mAVPlayer;
     private Context mContext;
-
     private long byteLen = 0;
     private long frameCount = 0;
     private long lastTime = 0;
@@ -86,7 +84,6 @@ public class RaopServer {
         nalPacket.height = height;
         Log.d("AVSYNC", "recv video pts = " + nalPacket.pts);
         mAVPlayer.addPacker(nalPacket);
-
     }
 
     public void onRecvAudioData(short[] pcm, long pts) {
