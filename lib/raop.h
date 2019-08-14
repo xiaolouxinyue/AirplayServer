@@ -30,8 +30,8 @@ struct raop_callbacks_s {
 	void  (*audio_process)(void *cls, void *session, pcm_data_struct *data);
 	void  (*audio_destroy)(void *cls, void *session);
 	/* h264数据回调 */
-    void  (*video_process)(void *cls, h264_decode_struct *data);
-
+    void  (*video_process)(void* cls, h264_decode_struct* data);
+    void  (*video_destroy)(void* cls);
 	/* Optional but recommended callback functions */
 	void  (*audio_flush)(void *cls, void *session);
 	void  (*audio_set_volume)(void *cls, void *session, float volume);
@@ -52,7 +52,7 @@ void *raop_get_callback_cls(raop_t *raop);
 int raop_start(raop_t *raop, unsigned short *port);
 int raop_is_running(raop_t *raop);
 void raop_stop(raop_t *raop);
-
+void raop_reset_pairing_session(raop_t* raop);
 void raop_destroy(raop_t *raop);
 
 #ifdef __cplusplus

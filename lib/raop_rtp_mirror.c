@@ -175,12 +175,20 @@ raop_rtp_mirror_thread_time(void *arg)
         struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp_mirror->remote_saddr;
         addr->sin_port = htons(raop_rtp_mirror->mirror_timing_rport);
         int sendlen = sendto(raop_rtp_mirror->mirror_time_sock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp_mirror->remote_saddr, raop_rtp_mirror->remote_saddr_len);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
+		logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
+		if (sendlen < 0)
+		{
+			break;
+		}
 
         saddrlen = sizeof(saddr);
         packetlen = recvfrom(raop_rtp_mirror->mirror_time_sock, (char *)packet, sizeof(packet), 0,
                              (struct sockaddr *)&saddr, &saddrlen);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time receive time packetlen = %d", packetlen);
+		logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time receive time packetlen = %d", packetlen);
+		if (packetlen < 0)
+		{
+			break;
+		}
         /* 16-24 系统时钟最后一次被设定或更新的时间。 */
         uint64_t Reference_Timestamp = byteutils_read_timeStamp(packet, 16);
         /* 24-32 NTP请求报文离开发送端时发送端的本地时间。  T1 */
@@ -294,7 +302,9 @@ raop_rtp_mirror_thread(void *arg)
             if (ret == 0) {
                 /* TCP socket closed */
                 logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "TCP socket closed");
-                break;
+				FD_CLR(stream_fd, &rfds);
+				stream_fd = -1;
+                continue;
             } else if (ret == -1) {
                 /* FIXME: Error happened */
                 logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Error in recv");
@@ -304,6 +314,7 @@ raop_rtp_mirror_thread(void *arg)
             if (readstart < 4) {
                 continue;
             }
+			
             if ((packet[0] == 80 && packet[1] == 79 && packet[2] == 83 && packet[3] == 84) || (packet[0] == 71 && packet[1] == 69 && packet[2] == 84)) {
                 /* POST或者GET */
                 logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "handle http data");
@@ -557,9 +568,17 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
     COND_SIGNAL(raop_rtp_mirror->time_cond);
     MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
 
-    THREAD_JOIN(raop_rtp_mirror->thread_time);
-    if (raop_rtp_mirror->mirror_data_sock != -1) closesocket(raop_rtp_mirror->mirror_data_sock);
-    if (raop_rtp_mirror->mirror_time_sock != -1) closesocket(raop_rtp_mirror->mirror_time_sock);
+	if (raop_rtp_mirror->mirror_data_sock != -1)
+	{
+		closesocket(raop_rtp_mirror->mirror_data_sock);
+		raop_rtp_mirror->mirror_data_sock = -1;
+	}
+	if (raop_rtp_mirror->mirror_time_sock != -1)
+	{
+		closesocket(raop_rtp_mirror->mirror_time_sock);
+		raop_rtp_mirror->mirror_time_sock = -1;
+	}
+	THREAD_JOIN(raop_rtp_mirror->thread_time);
 
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
@@ -574,6 +593,8 @@ void raop_rtp_mirror_destroy(raop_rtp_mirror_t *raop_rtp_mirror) {
         MUTEX_DESTROY(raop_rtp_mirror->time_mutex);
         COND_DESTROY(raop_rtp_mirror->time_cond);
         mirror_buffer_destroy(raop_rtp_mirror->buffer);
+	raop_rtp_mirror->callbacks.video_destroy(raop_rtp_mirror->callbacks.cls);
+	free(raop_rtp_mirror);
     }
 }
 

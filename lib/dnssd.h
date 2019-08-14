@@ -36,6 +36,8 @@ int dnssd_register_airplay(dnssd_t *dnssd, unsigned short port);
 void dnssd_unregister_raop(dnssd_t *dnssd);
 void dnssd_unregister_airplay(dnssd_t *dnssd);
 
+char *dnssd_get_hw_addr(dnssd_t *dnssd, int *length);
+
 void dnssd_destroy(dnssd_t *dnssd);
 
 #ifdef __cplusplus

@@ -511,7 +511,7 @@ raop_rtp_thread_udp(void *arg)
                 //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio rtp_timestamp = %u", rtp_timestamp);
                 //logger_log(raop_rtp->logger, LOGGER_DEBUG, "rtp audio next_timestamp = %u", next_timestamp);
                 /* ntp_time和rtp_timestamp 用于音画同步 */
-                raop_rtp->sync_time = ntp_time - OFFSET_1900_TO_1970 * 1000000;
+                raop_rtp->sync_time = ntp_time - OFFSET_1900_TO_1970 * 1000000ULL;
                 raop_rtp->sync_timestamp = rtp_timestamp;
             } else {
                 logger_log(raop_rtp->logger, LOGGER_DEBUG, "raop_rtp_thread_udp unknown packet");
@@ -542,7 +542,7 @@ raop_rtp_thread_udp(void *arg)
                     pcm_data.data_len = 960;
                     pcm_data.data = audiobuf;
                     /* 根据sync_time和sync_timestamp计算timestamp对应的pts */
-                    pcm_data.pts = (uint64_t) (timestamp - raop_rtp->sync_timestamp) * 1000000 / 44100 + raop_rtp->sync_time;
+                    pcm_data.pts = (uint64_t) (timestamp - raop_rtp->sync_timestamp) * 1000000ULL / 44100 + raop_rtp->sync_time;
                     raop_rtp->callbacks.audio_process(raop_rtp->callbacks.cls, cb_data, &pcm_data);
                 }
                 /* Handle possible resend requests */

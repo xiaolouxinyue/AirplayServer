@@ -39,6 +39,9 @@ struct raop_s {
 
 	/* Pairing, HTTP daemon and RSA key */
 	pairing_t *pairing;
+
+	fairplay_t* fairplay;
+	pairing_session_t* pairing_session;
 	httpd_t *httpd;
 
     unsigned short port;
@@ -48,8 +51,6 @@ struct raop_conn_s {
 	raop_t *raop;
 	raop_rtp_t *raop_rtp;
 	raop_rtp_mirror_t *raop_rtp_mirror;
-	fairplay_t *fairplay;
-	pairing_session_t *pairing;
 	unsigned char *local;
 	int locallen;
 
@@ -75,17 +76,6 @@ conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remot
 	}
 	conn->raop = raop;
 	conn->raop_rtp = NULL;
-	conn->fairplay = fairplay_init(raop->logger);
-	if (!conn->fairplay) {
-		free(conn);
-		return NULL;
-	}
-	conn->pairing = pairing_session_init(raop->pairing);
-	if (!conn->pairing) {
-		fairplay_destroy(conn->fairplay);
-		free(conn);
-		return NULL;
-	}
 
 	if (locallen == 4) {
 		logger_log(conn->raop->logger, LOGGER_INFO,
@@ -215,8 +205,6 @@ conn_destroy(void *ptr)
     }
 	free(conn->local);
 	free(conn->remote);
-	pairing_session_destroy(conn->pairing);
-	fairplay_destroy(conn->fairplay);
 	free(conn);
 }
 
@@ -224,7 +212,6 @@ raop_t *
 raop_init(int max_clients, raop_callbacks_t *callbacks)
 {
 	raop_t *raop;
-	pairing_t *pairing;
 	httpd_t *httpd;
 	httpd_callbacks_t httpd_cbs;
 
@@ -252,8 +239,24 @@ raop_init(int max_clients, raop_callbacks_t *callbacks)
 
 	/* Initialize the logger */
 	raop->logger = logger_init();
-	pairing = pairing_init_generate();
-	if (!pairing) {
+
+	raop->pairing = pairing_init_generate();
+	if (!raop->pairing) {
+		free(raop);
+		return NULL;
+	}
+
+	raop->fairplay = fairplay_init(raop->logger);
+	if (!raop->fairplay) {
+		pairing_destroy(raop->pairing);
+		free(raop);
+		return NULL;
+	}
+
+	raop->pairing_session = pairing_session_init(raop->pairing);
+	if (!raop->pairing_session) {
+		pairing_destroy(raop->pairing);
+		fairplay_destroy(raop->fairplay);
 		free(raop);
 		return NULL;
 	}
@@ -268,15 +271,33 @@ raop_init(int max_clients, raop_callbacks_t *callbacks)
 	/* Initialize the http daemon */
 	httpd = httpd_init(raop->logger, &httpd_cbs, max_clients);
 	if (!httpd) {
-		pairing_destroy(pairing);
+		pairing_destroy(raop->pairing);
+		fairplay_destroy(raop->fairplay);
+		pairing_session_destroy(raop->pairing_session);
 		free(raop);
 		return NULL;
 	}
 	/* Copy callbacks structure */
 	memcpy(&raop->callbacks, callbacks, sizeof(raop_callbacks_t));
-	raop->pairing = pairing;
 	raop->httpd = httpd;
 	return raop;
+}
+
+void
+raop_reset_pairing_session(raop_t* raop)
+{
+	if (raop->pairing_session) {
+		pairing_session_destroy(raop->pairing_session);
+	}
+	if (raop->pairing) {
+		pairing_destroy(raop->pairing);
+	}
+	if (raop->fairplay) {
+		fairplay_destroy(raop->fairplay);
+	}
+	raop->fairplay = fairplay_init(raop->logger);
+	raop->pairing = pairing_init_generate();
+	raop->pairing_session = pairing_session_init(raop->pairing);
 }
 
 void
@@ -284,7 +305,8 @@ raop_destroy(raop_t *raop)
 {
 	if (raop) {
 		raop_stop(raop);
-
+		pairing_session_destroy(raop->pairing_session);
+		fairplay_destroy(raop->fairplay);
 		pairing_destroy(raop->pairing);
 		httpd_destroy(raop->httpd);
 		logger_destroy(raop->logger);
@@ -352,6 +374,8 @@ void
 raop_stop(raop_t *raop)
 {
 	assert(raop);
+	/* 停止的时候需要重新生成pair */
+	raop_reset_pairing_session(raop);
 	httpd_stop(raop->httpd);
 }
 

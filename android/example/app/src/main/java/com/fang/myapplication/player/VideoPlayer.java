@@ -23,144 +23,107 @@
  */
 package com.fang.myapplication.player;
 
+import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
 
+import com.fang.myapplication.MainActivity;
 import com.fang.myapplication.model.NALPacket;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class VideoPlayer extends Thread {
+public class VideoPlayer {
 
     private static final String TAG = "VideoPlayer";
 
+    private static final int VIDEO_WIDTH = 540;
+    private static final int VIDEO_HEIGHT = 540;
     private String mMimeType = "video/avc";
-    private MediaCodec.BufferInfo mBufferInfo = new MediaCodec.BufferInfo();
-    private MediaCodec mDecoder = null;
-    private Surface mSurface = null;
-    private boolean mIsEnd = false;
-    private List<NALPacket> mListBuffer = Collections.synchronizedList(new ArrayList<NALPacket>());
+    private MediaCodec mCodec = null;
+    private List<NALPacket> mSyncList = Collections.synchronizedList(new ArrayList<>());
 
-    public VideoPlayer(Surface surface) {
-        mSurface = surface;
+    private MediaTimeProvider mMediaTimeProvider;
+    private MediaCodecVideoRenderer mRender;
+    private Context mContext;
+    private Surface mSurface;
+
+    public VideoPlayer(Context context, MediaTimeProvider mediaTimeProvider) {
+        mContext = context;
+        mMediaTimeProvider = mediaTimeProvider;
+        mRender = new MediaCodecVideoRenderer(context, this);
+    }
+
+    public void setSurface(Surface surface) {
+        this.mSurface = surface;
+    }
+
+    public void start() {
+        try {
+            if (mCodec != null) {
+                mCodec.stop();
+                mCodec.release();
+            }
+            MediaFormat format = MediaFormat.createVideoFormat(mMimeType, VIDEO_WIDTH, VIDEO_HEIGHT);
+            mCodec = MediaCodec.createDecoderByType(mMimeType);
+            mCodec.configure(format, mSurface, null, 0);
+            mCodec.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
+            mCodec.start();
+            mRender.setCodec(mCodec);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void stop() {
+        if (mCodec != null) {
+            mCodec.stop();
+            mCodec.release();
+            mCodec = null;
+        }
     }
 
     public void addPacker(NALPacket nalPacket) {
-        if (isSpsPps(nalPacket)) {
-            // sps pps
-            try {
-                if (mDecoder != null) {
-                    mDecoder.stop();
-                }
-                MediaFormat format = MediaFormat.createVideoFormat(mMimeType, nalPacket.width, nalPacket.height);
-                format.setByteBuffer("csd-0", ByteBuffer.wrap(getSps(nalPacket.nalData)));
-                format.setByteBuffer("csd-1", ByteBuffer.wrap(getPps(nalPacket.nalData)));
-                mDecoder = MediaCodec.createDecoderByType(mMimeType);
-                mDecoder.configure(format, mSurface, null, 0);
-                mDecoder.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
-                mDecoder.start();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        } else {
-            // pic
-            mListBuffer.add(nalPacket);
-        }
-
+        mSyncList.add(nalPacket);
     }
 
-    private boolean isSpsPps(NALPacket nalPacket) {
-        return (nalPacket.nalData[4] & 0x1F) == 7;
+    public MediaCodec getCodec() {
+        return mCodec;
     }
 
-    private int getIndex(byte[] nalData) {
-        for (int i = 4; i < nalData.length - 3; i++) {
-            if (nalData[i] == 0 && nalData[i + 1] == 0 && nalData[i + 2] == 0 && nalData[i + 3] == 1) {
-                return i;
-            }
+    // 读取数据
+    public NALPacket getPacket() {
+        if (!mSyncList.isEmpty()) {
+            return mSyncList.remove(0);
         }
-        return -1;
+        return null;
     }
 
-    private byte[] getSps(byte[] nalData) {
-        int index = getIndex(nalData);
-        byte[] sps = new byte[index];
-        System.arraycopy(nalData, 0, sps, 0, sps.length);
-        return sps;
+    public long getAudioUs() {
+        return mMediaTimeProvider.getAudioUs();
     }
 
-    private byte[] getPps(byte[] nalData) {
-        int index = getIndex(nalData);
-        byte[] pps = new byte[nalData.length - index];
-        System.arraycopy(nalData, index, pps, 0, pps.length);
-        return pps;
-    }
-    
-    @Override
-    public void run() {
-        super.run();
-        while (!mIsEnd) {
-            if (mListBuffer.size() == 0) {
-                try {
-                    sleep(10);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                continue;
-            }
-            doDecode(mListBuffer.remove(0));
-        }
+    public void setStartTime(long time) {
+        mMediaTimeProvider.setStartTime(time);
     }
 
-    private void doDecode(NALPacket nalPacket) {
-        final int TIMEOUT_USEC = 10000;
-        ByteBuffer[] decoderInputBuffers = mDecoder.getInputBuffers();
-        int inputBufIndex = -10000;
-        try {
-            inputBufIndex = mDecoder.dequeueInputBuffer(TIMEOUT_USEC);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (inputBufIndex >= 0) {
-            ByteBuffer inputBuf = decoderInputBuffers[inputBufIndex];
-            inputBuf.put(nalPacket.nalData);
-            mDecoder.queueInputBuffer(inputBufIndex, 0, nalPacket.nalData.length, nalPacket.pts, 0);
-        } else {
-            Log.d(TAG, "dequeueInputBuffer failed");
-        }
+    void doSomeWork() {
+        mRender.render(getAudioUs(), SystemClock.elapsedRealtime() * 1000);
+    }
 
-        int outputBufferIndex = -10000;
-        try {
-            outputBufferIndex = mDecoder.dequeueOutputBuffer(mBufferInfo, TIMEOUT_USEC);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        if (outputBufferIndex >= 0) {
-            mDecoder.releaseOutputBuffer(outputBufferIndex, true);
-            try{
-                Thread.sleep(10);
-            }  catch (InterruptedException ie){
-                ie.printStackTrace();
-            }
-        } else if (outputBufferIndex == MediaCodec.INFO_TRY_AGAIN_LATER) {
-            try{
-                Thread.sleep(10);
-            }  catch (InterruptedException ie){
-                ie.printStackTrace();
-            }
-        } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED) {
-            // not important for us, since we're using Surface
-
-        } else if (outputBufferIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
-
-        } else {
-
-        }
-
+    public void processOutputFormat(int width, int height) {
+        Log.d("AVSPEED", "width = " + width + ", height = " + height);
+        ((MainActivity) mContext).processOutputFormat(width, height);
     }
 }

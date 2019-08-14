@@ -23,74 +23,88 @@
  */
 package com.fang.myapplication;
 
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.util.Log;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
+import android.view.Surface;
 
 import com.fang.myapplication.model.NALPacket;
 import com.fang.myapplication.model.PCMPacket;
-import com.fang.myapplication.player.AudioPlayer;
-import com.fang.myapplication.player.VideoPlayer;
+import com.fang.myapplication.player.AVPlayer;
 
-public class RaopServer implements SurfaceHolder.Callback {
+public class RaopServer {
 
     static {
         System.loadLibrary("raopserver_android");
     }
+
     private static final String TAG = "RaopServer";
-    private VideoPlayer mVideoPlayer;
-    private AudioPlayer mAudioPlayer;
-    private SurfaceView mSurfaceView;
     private long mServerId = 0;
 
-    public RaopServer(SurfaceView surfaceView) {
-        mSurfaceView = surfaceView;
-        mSurfaceView.getHolder().addCallback(this);
-        mAudioPlayer = new AudioPlayer();
-        mAudioPlayer.start();
+    private long mBasePts = 0;
+    private long mStartUs = 0;
+    private AVPlayer mAVPlayer;
+    private Context mContext;
+
+    private long byteLen = 0;
+    private long frameCount = 0;
+    private long lastTime = 0;
+    public RaopServer(Context context) {
+        mContext = context;
+        mAVPlayer = new AVPlayer(context);
+    }
+
+    public void setSurface(Surface surface) {
+        mAVPlayer.setSurface(surface);
     }
 
     public void onRecvVideoData(byte[] nal, int nalType, long dts, long pts, int width, int height) {
         Log.d(TAG, "onRecvVideoData pts = " + pts + ", nalType = " + nalType + ", width = " + width + ", height = " + height + ", nal length = " + nal.length);
+
+        if (lastTime == 0) {
+            lastTime = System.currentTimeMillis();
+        }
+        byteLen = byteLen + nal.length;
+        frameCount++;
+        long diffTime = System.currentTimeMillis() - lastTime;
+        if (diffTime > 1000) {
+            long fps = (long) (frameCount / ((float) diffTime / 1000));
+            long speed = (long) (byteLen / 1024 / ((float) diffTime / 1000));
+            Log.d("AVSPEED", "fps = " + fps + ", speed = " + speed);
+            lastTime = System.currentTimeMillis();
+            byteLen = 0;
+            frameCount = 0;
+        }
+
+        if (mBasePts == 0) {
+            mBasePts = pts;
+        }
         NALPacket nalPacket = new NALPacket();
         nalPacket.nalData = nal;
         nalPacket.nalType = nalType;
-        nalPacket.pts = pts;
+        nalPacket.pts = pts - mBasePts;
         nalPacket.width = width;
         nalPacket.height = height;
-        mVideoPlayer.addPacker(nalPacket);
+        Log.d("AVSYNC", "recv video pts = " + nalPacket.pts);
+        mAVPlayer.addPacker(nalPacket);
+
     }
 
     public void onRecvAudioData(short[] pcm, long pts) {
         Log.d(TAG, "onRecvAudioData pcm length = " + pcm.length + ", pts = " + pts);
         PCMPacket pcmPacket = new PCMPacket();
         pcmPacket.data = pcm;
-        pcmPacket.pts = pts;
-        mAudioPlayer.addPacker(pcmPacket);
-    }
-
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        if (mVideoPlayer == null) {
-            mVideoPlayer = new VideoPlayer(holder.getSurface());
-            mVideoPlayer.start();
-        }
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-
+        pcmPacket.pts = pts - mBasePts;
+        Log.d("AVSYNC", "recv audio  pts = " + pcmPacket.pts);
+        mAVPlayer.addPacker(pcmPacket);
     }
 
     public void startServer(String deviceName, byte[] hdAddr, int airplayPort) {
         if (mServerId == 0) {
             mServerId = start(deviceName, hdAddr, airplayPort);
         }
+        mAVPlayer.start();
     }
 
     public void stopServer() {
@@ -98,7 +112,8 @@ public class RaopServer implements SurfaceHolder.Callback {
             stop(mServerId);
         }
         mServerId = 0;
-
+        mBasePts = 0;
+        mAVPlayer.stop();
     }
 
     public int getPort() {
@@ -111,4 +126,5 @@ public class RaopServer implements SurfaceHolder.Callback {
     private native long start(String deviceName, byte[] hdAddr, int airplayPort);
     private native void stop(long serverId);
     private native int getPort(long serverId);
+
 }

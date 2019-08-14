@@ -15,10 +15,10 @@
 #ifndef AIRPLAYSERVER_BYTEUTILS_H
 #define AIRPLAYSERVER_BYTEUTILS_H
 #include <stdint.h>
-#define INT_32_MAX 0x100000000
+#define INT_32_MAX 0x100000000ULL
                   //0x100000000
 //4294967296
-#define OFFSET_1900_TO_1970 2208988800
+#define OFFSET_1900_TO_1970 2208988800ULL
 int byteutils_get_int(unsigned char* b, int offset);
 short byteutils_get_short(unsigned char* b, int offset);
 float byteutils_get_float(unsigned char* b, int offset);

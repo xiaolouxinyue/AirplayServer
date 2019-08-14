@@ -1,0 +1,330 @@
+package com.fang.myapplication.player;
+
+import android.content.Context;
+import android.media.MediaCodec;
+import android.media.MediaFormat;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.Surface;
+
+import androidx.annotation.Nullable;
+
+import com.fang.myapplication.model.NALPacket;
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.video.VideoFrameMetadataListener;
+import com.google.android.exoplayer2.video.VideoRendererEventListener;
+
+import java.nio.ByteBuffer;
+
+public class MediaCodecVideoRenderer {
+
+    private int inputIndex;
+    private int outputIndex = C.INDEX_UNSET;
+    private MediaCodec codec;
+    private ByteBuffer outputBuffer;
+    private long renderTimeLimitMs;
+    private MediaCodec.BufferInfo outputBufferInfo = new MediaCodec.BufferInfo();
+
+    private static final String KEY_CROP_LEFT = "crop-left";
+    private static final String KEY_CROP_RIGHT = "crop-right";
+    private static final String KEY_CROP_BOTTOM = "crop-bottom";
+    private static final String KEY_CROP_TOP = "crop-top";
+
+    // Long edge length in pixels for standard video formats, in decreasing in order.
+    private static final int[] STANDARD_LONG_EDGE_VIDEO_PX = new int[] {
+            1920, 1600, 1440, 1280, 960, 854, 640, 540, 480};
+
+    // Generally there is zero or one pending output stream offset. We track more offsets to allow for
+    // pending output streams that have fewer frames than the codec latency.
+    private static final int MAX_PENDING_OUTPUT_STREAM_OFFSET_COUNT = 10;
+
+    private static final float INITIAL_FORMAT_MAX_INPUT_SIZE_SCALE_FACTOR = 1.5f;
+
+    private static boolean evaluatedDeviceNeedsSetOutputSurfaceWorkaround;
+    private static boolean deviceNeedsSetOutputSurfaceWorkaround;
+
+    private Context context;
+    private VideoFrameReleaseTimeHelper frameReleaseTimeHelper;
+    private VideoRendererEventListener.EventDispatcher eventDispatcher;
+    private long allowedJoiningTimeMs;
+    private int maxDroppedFramesToNotify;
+    private boolean deviceNeedsNoPostProcessWorkaround;
+    private long[] pendingOutputStreamOffsetsUs;
+    private long[] pendingOutputStreamSwitchTimesUs;
+
+    private boolean codecNeedsSetOutputSurfaceWorkaround;
+
+    private Surface surface;
+    private Surface dummySurface;
+    @C.VideoScalingMode
+    private int scalingMode;
+    private boolean renderedFirstFrame;
+    private long initialPositionUs = C.TIME_UNSET;
+    private long joiningDeadlineMs;
+    private long droppedFrameAccumulationStartTimeMs;
+    private int droppedFrames;
+    private int consecutiveDroppedFrameCount;
+    private int buffersInCodecCount;
+    private long lastRenderTimeUs;
+
+    private int pendingRotationDegrees;
+    private float pendingPixelWidthHeightRatio;
+    private int currentWidth;
+    private int currentHeight;
+    private int currentUnappliedRotationDegrees;
+    private float currentPixelWidthHeightRatio;
+    private int reportedWidth;
+    private int reportedHeight;
+    private int reportedUnappliedRotationDegrees;
+    private float reportedPixelWidthHeightRatio;
+
+    private boolean tunneling;
+    private int tunnelingAudioSessionId;
+
+    private long lastInputTimeUs;
+    private long outputStreamOffsetUs;
+    private int pendingOutputStreamOffsetCount;
+    private @Nullable VideoFrameMetadataListener frameMetadataListener;
+
+    private VideoPlayer videoPlayer;
+    private long initPositionUs = 0;
+
+    public MediaCodecVideoRenderer(Context context, VideoPlayer videoPlayer) {
+        frameReleaseTimeHelper = new VideoFrameReleaseTimeHelper(context.getApplicationContext());
+        this.videoPlayer = videoPlayer;
+        resetInputBuffer();
+        resetOutputBuffer();
+    }
+
+    public void setCodec(MediaCodec mediaCodec) {
+        codec = mediaCodec;
+    }
+
+    /**
+     * 开始渲染
+     * @param positionUs 同步时间戳
+     * @param elapsedRealtimeUs 当前时间
+     */
+    public void render(long positionUs, long elapsedRealtimeUs) {
+        while (drainOutputBuffer(positionUs, elapsedRealtimeUs)) {}
+        while (feedInputBuffer(positionUs)) {}
+    }
+
+    public boolean feedInputBuffer(long positionUs) {
+        if (codec == null) {
+            return false;
+        }
+        if (inputIndex < 0) {
+            inputIndex = codec.dequeueInputBuffer(0);
+            if (inputIndex < 0) {
+                return false;
+            }
+        }
+        NALPacket nalPacket = videoPlayer.getPacket();
+        if (nalPacket == null) {
+            return false;
+        }
+        if (initPositionUs == 0) {
+            initPositionUs = positionUs;
+            videoPlayer.setStartTime(positionUs);
+        }
+        ByteBuffer inputBuffer = codec.getInputBuffer(inputIndex);
+        inputBuffer.put(nalPacket.nalData);
+        long pts = nalPacket.pts + initPositionUs;
+        Log.d("AVSYNC_VIDEO", "input video pts = " + pts + ", initPositionUs = " + initPositionUs);
+        codec.queueInputBuffer(inputIndex, 0, nalPacket.nalData.length, pts, 0);
+        resetInputBuffer();
+        return true;
+    }
+
+    private boolean drainOutputBuffer(long positionUs, long elapsedRealtimeUs) {
+        if (!hasOutputBuffer()) {
+            int outputIndex = codec.dequeueOutputBuffer(outputBufferInfo, 0);
+            if (outputIndex < 0) {
+                if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED /* (-2) */) {
+                    processOutputFormat();
+                    return true;
+                } else if (outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED /* (-3) */) {
+                    processOutputBuffersChanged();
+                    return true;
+                }
+                return false;
+            }
+            this.outputIndex = outputIndex;
+            outputBuffer = codec.getOutputBuffer(outputIndex);
+            if (outputBuffer != null) {
+                outputBuffer.position(outputBufferInfo.offset);
+                outputBuffer.limit(outputBufferInfo.offset + outputBufferInfo.size);
+            }
+        }
+        //positionUs = lastPositionUs == -1 ? positionUs : lastPositionUs;
+        boolean processedOutputBuffer = processOutputBuffer(positionUs, elapsedRealtimeUs, outputIndex, outputBufferInfo.presentationTimeUs);
+        if (processedOutputBuffer) {
+            resetOutputBuffer();
+            return true;
+        }
+        return false;
+    }
+
+    private boolean processOutputBuffer(long positionUs, long elapsedRealtimeUs, int bufferIndex, long bufferPresentationTimeUs) {
+        if (codec == null) {
+            return false;
+        }
+        // 展示时间
+        long presentationTimeUs = bufferPresentationTimeUs;
+        //Log.d("AVSYNC_VIDEO", "output video pts = " + presentationTimeUs + ", positionUs = " + positionUs);
+        long earlyUs = bufferPresentationTimeUs - positionUs;
+        Log.d("AVSYNC_VIDEO", "earlyUs 1 = " + earlyUs);
+        long elapsedRealtimeNowUs = SystemClock.elapsedRealtime() * 1000;
+        if (!renderedFirstFrame
+                || shouldForceRenderOutputBuffer(earlyUs, elapsedRealtimeNowUs - lastRenderTimeUs)) {
+            long releaseTimeNs = System.nanoTime();
+            Log.d("AVSYNC_VIDEO", "earlyUs show 1 = " + earlyUs);
+            renderOutputBufferV21(codec, bufferIndex, presentationTimeUs, releaseTimeNs);
+            return true;
+        }
+
+        long elapsedSinceStartOfLoopUs = elapsedRealtimeNowUs - elapsedRealtimeUs;
+        earlyUs -= elapsedSinceStartOfLoopUs;
+        Log.d("AVSYNC_VIDEO", "earlyUs 2 = " + earlyUs);
+
+        // Compute the buffer's desired release time in nanoseconds.
+//        long systemTimeNs = System.nanoTime();
+//        long unadjustedFrameReleaseTimeNs = systemTimeNs + (earlyUs * 1000);
+//
+//        // Apply a timestamp adjustment, if there is one.
+//        long adjustedReleaseTimeNs = frameReleaseTimeHelper.adjustReleaseTime(
+//                bufferPresentationTimeUs, unadjustedFrameReleaseTimeNs);
+//        earlyUs = (adjustedReleaseTimeNs - systemTimeNs) / 1000;
+
+
+        //Log.d("AVSYNC_VIDEO", "earlyUs 3 = " + earlyUs);
+        if (shouldDropBuffersToKeyframe(earlyUs, elapsedRealtimeUs)
+                && maybeDropBuffersToKeyframe(codec, bufferIndex, presentationTimeUs, positionUs)) {
+            Log.d("AVSYNC_VIDEO", "earlyUs drop 1 = " + earlyUs);
+            return false;
+        } else if (shouldDropOutputBuffer(earlyUs, elapsedRealtimeUs)) {
+            dropOutputBuffer(codec, bufferIndex, presentationTimeUs);
+            Log.d("AVSYNC_VIDEO", "earlyUs drop 2 = " + earlyUs);
+            return true;
+        }
+
+        // Let the underlying framework time the release.
+        if (earlyUs < 400_000) {
+            Log.d("AVSYNC_VIDEO", "earlyUs show 2 = " + earlyUs);
+            renderOutputBufferV21(codec, bufferIndex, presentationTimeUs, 0);
+            return true;
+        }
+        // We're either not playing, or it's not time to render the frame yet.
+        return false;
+    }
+
+    public void simpleRender(NALPacket nalPacket) {
+        int inputIndex = codec.dequeueInputBuffer(0);
+        if (inputIndex < 0) {
+            return;
+        }
+        ByteBuffer inputBuffer = codec.getInputBuffer(inputIndex);
+        inputBuffer.put(nalPacket.nalData);
+        codec.queueInputBuffer(inputIndex, 0, nalPacket.nalData.length, nalPacket.pts, 0);
+        int outputIndex = codec.dequeueOutputBuffer(outputBufferInfo, 0);
+        if (outputIndex < 0) {
+            if (outputIndex == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED /* (-2) */) {
+                processOutputFormat();
+                return;
+            } else if (outputIndex == MediaCodec.INFO_OUTPUT_BUFFERS_CHANGED /* (-3) */) {
+                processOutputBuffersChanged();
+                return;
+            }
+            return;
+        }
+        codec.releaseOutputBuffer(outputIndex, true);
+    }
+
+    private void resetInputBuffer() {
+        inputIndex = C.INDEX_UNSET;
+    }
+
+    private void resetOutputBuffer() {
+        outputIndex = C.INDEX_UNSET;
+        outputBuffer = null;
+    }
+
+    private boolean hasOutputBuffer() {
+        return outputIndex >= 0;
+    }
+
+    /**
+     * Processes a new output format.
+     */
+    private void processOutputFormat() {
+        MediaFormat outputFormat = codec.getOutputFormat();
+        boolean hasCrop = outputFormat.containsKey(KEY_CROP_RIGHT)
+                && outputFormat.containsKey(KEY_CROP_LEFT) && outputFormat.containsKey(KEY_CROP_BOTTOM)
+                && outputFormat.containsKey(KEY_CROP_TOP);
+        int width = hasCrop ? outputFormat.getInteger(KEY_CROP_RIGHT) - outputFormat.getInteger(KEY_CROP_LEFT) + 1
+                        : outputFormat.getInteger(MediaFormat.KEY_WIDTH);
+        int height = hasCrop ? outputFormat.getInteger(KEY_CROP_BOTTOM) - outputFormat.getInteger(KEY_CROP_TOP) + 1
+                        : outputFormat.getInteger(MediaFormat.KEY_HEIGHT);
+        videoPlayer.processOutputFormat(width, height);
+    }
+
+    private void processOutputBuffersChanged() {
+//        if (Util.SDK_INT < 21) {
+//            outputBuffers = codec.getOutputBuffers();
+//        }
+    }
+
+
+
+    // 丢掉整个gop
+    private boolean maybeDropBuffersToKeyframe(MediaCodec codec, int index, long presentationTimeUs,
+                                                 long positionUs) {
+
+        return false;
+    }
+
+    private boolean shouldForceRenderOutputBuffer(long earlyUs, long elapsedSinceLastRenderUs) {
+        return isBufferLate(earlyUs) && elapsedSinceLastRenderUs > 100000;
+    }
+
+    private boolean shouldDropBuffersToKeyframe(long earlyUs, long elapsedRealtimeUs) {
+        return isBufferVeryLate(earlyUs);
+    }
+
+    private static boolean isBufferVeryLate(long earlyUs) {
+        // Class a buffer as very late if it should have been presented more than 500 ms ago.
+        return earlyUs < -500000;
+    }
+
+    private boolean shouldDropOutputBuffer(long earlyUs, long elapsedRealtimeUs) {
+        return isBufferLate(earlyUs);
+    }
+
+    private static boolean isBufferLate(long earlyUs) {
+        // Class a buffer as late if it should have been presented more than 300 ms ago.
+        return earlyUs < -400000;
+    }
+
+    /**
+     * Drops the output buffer with the specified index.
+     *
+     * @param codec The codec that owns the output buffer.
+     * @param index The index of the output buffer to drop.
+     * @param presentationTimeUs The presentation time of the output buffer, in microseconds.
+     */
+    protected void dropOutputBuffer(MediaCodec codec, int index, long presentationTimeUs) {
+        codec.releaseOutputBuffer(index, false);
+    }
+
+    protected void renderOutputBufferV21(MediaCodec codec, int index, long presentationTimeUs, long releaseTimeNs) {
+        //codec.releaseOutputBuffer(index, releaseTimeNs);
+        codec.releaseOutputBuffer(index, true);
+        lastRenderTimeUs = SystemClock.elapsedRealtime() * 1000;
+        consecutiveDroppedFrameCount = 0;
+        if (!renderedFirstFrame) {
+            renderedFirstFrame = true;
+        }
+    }
+
+}
