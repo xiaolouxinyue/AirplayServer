@@ -79,7 +79,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
         mBtnControl.setOnClickListener(this);
         mTextureView = findViewById(R.id.surface);
         mRaopServer = new RaopServer(MainActivity.this);
-        mMacAddress = NetUtils.getLocalMacAddress2();
+        mMacAddress = NetUtils.getLocalMacAddress();
         mTextureView.setSurfaceTextureListener(this);
         DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
         mScreenWidth = displayMetrics.widthPixels;
