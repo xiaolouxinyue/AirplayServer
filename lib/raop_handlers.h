@@ -36,7 +36,7 @@ raop_handler_info(raop_conn_t *conn,
     plist_t r_node = plist_new_dict();
     plist_t source_version_node = plist_new_string(AIRPLAY_SRCVERS);
     plist_dict_set_item(r_node, "sourceVersion", source_version_node);
-    plist_t status_flags_node = plist_new_uint(68);
+    plist_t status_flags_node = plist_new_uint(4);
     plist_dict_set_item(r_node, "statusFlags", status_flags_node);
     plist_t mac_address_node = plist_new_string(device_id);
     plist_dict_set_item(r_node, "macAddress", mac_address_node);
@@ -44,9 +44,15 @@ raop_handler_info(raop_conn_t *conn,
     plist_dict_set_item(r_node, "deviceID", device_id_node);
     plist_t name_node = plist_new_string("AppleTV");
     plist_dict_set_item(r_node, "name", name_node);
+    plist_t vv_node = plist_new_uint(strtol(AIRPLAY_VV, NULL, 10));
+    plist_dict_set_item(r_node, "vv", vv_node);
+    plist_t keep_alive_low_power_node = plist_new_bool(1);
+    plist_dict_set_item(r_node, "keepAliveLowPower", keep_alive_low_power_node);
+    plist_t keep_alive_send_stats_as_body_node = plist_new_bool(1);
+    plist_dict_set_item(r_node, "keepAliveSendStatsAsBody", keep_alive_send_stats_as_body_node);
+    plist_t pi_node = plist_new_string(AIRPLAY_PI);
+    plist_dict_set_item(r_node, "pi", pi_node);
 
-    plist_t features_node = plist_new_uint((uint64_t) 0x1E << 32 | 0x5A7FFFF7);
-    plist_dict_set_item(r_node, "features", features_node);
     plist_t audio_formats_node = plist_new_array();
     plist_t audio_format_0_node = plist_new_dict();
     plist_t audio_format_0_type_node = plist_new_uint(100);
@@ -65,24 +71,6 @@ raop_handler_info(raop_conn_t *conn,
     plist_dict_set_item(audio_format_1_node, "audioOutputFormats", audio_format_1_audio_output_formats_node);
     plist_array_append_item(audio_formats_node, audio_format_1_node);
     plist_dict_set_item(r_node, "audioFormats", audio_formats_node);
-
-    plist_t pi_node = plist_new_string(AIRPLAY_PI);
-    plist_dict_set_item(r_node, "pi", pi_node);
-
-    plist_t vv_node = plist_new_uint(strtol(AIRPLAY_VV, NULL, 10));
-    plist_dict_set_item(r_node, "vv", vv_node);
-
-
-
-    plist_t keep_alive_low_power_node = plist_new_bool(1);
-    plist_dict_set_item(r_node, "keepAliveLowPower", keep_alive_low_power_node);
-
-    plist_t pk_node = plist_new_data(pk, pk_len);
-    plist_dict_set_item(r_node, "pk", pk_node);
-
-    plist_t keep_alive_send_stats_as_body_node = plist_new_bool(1);
-    plist_dict_set_item(r_node, "keepAliveSendStatsAsBody", keep_alive_send_stats_as_body_node);
-
     plist_t audio_latencies_node = plist_new_array();
     plist_t audio_latencies_0_node = plist_new_dict();
     plist_t audio_latencies_0_output_latency_micros_node = plist_new_uint(0);
@@ -105,15 +93,18 @@ raop_handler_info(raop_conn_t *conn,
     plist_dict_set_item(audio_latencies_1_node, "inputLatencyMicros", audio_latencies_1_input_latency_micros_node);
     plist_array_append_item(audio_latencies_node, audio_latencies_1_node);
     plist_dict_set_item(r_node, "audioLatencies", audio_latencies_node);
-
+    plist_t pk_node = plist_new_data(pk, pk_len);
+    plist_dict_set_item(r_node, "pk", pk_node);
     plist_t model_node = plist_new_string(GLOBAL_MODEL);
     plist_dict_set_item(r_node, "model", model_node);
+    plist_t features_node = plist_new_uint((uint64_t) 0x1E << 32 | 0x5A7FFFF7);
+    plist_dict_set_item(r_node, "features", features_node);
 
     plist_t displays_node = plist_new_array();
     plist_t displays_0_node = plist_new_dict();
     plist_t displays_0_uuid_node = plist_new_string("e0ff8a27-6738-3d56-8a16-cc53aacee925");
-    plist_t displays_0_width_physical_node = plist_new_uint(0);
-    plist_t displays_0_height_physical_node = plist_new_uint(0);
+    plist_t displays_0_width_physical_node = plist_new_bool(0);
+    plist_t displays_0_height_physical_node = plist_new_bool(0);
     plist_t displays_0_width_node = plist_new_uint(1080);
     plist_t displays_0_height_node = plist_new_uint(1920);
     plist_t displays_0_width_pixels_node = plist_new_uint(1080);
