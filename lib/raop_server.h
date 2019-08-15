@@ -56,9 +56,10 @@ typedef struct raop_server_s raop_server_t;
 
 typedef void (*audio_data_callback)(void *cls, void *session, pcm_data_struct *data);
 typedef void (*video_data_callback)(void *cls, h264_decode_struct *data);
+typedef void (*video_destroy_callback)(void *cls);
 
 raop_server_t *
-raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback);
+raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback, video_destroy_callback destroy_callback);
 int raop_server_start(raop_server_t *raop_server, const char *device_name, char *hw_addr,
                       int hw_addr_len);
 int raop_server_get_port(raop_server_t *raop_server);

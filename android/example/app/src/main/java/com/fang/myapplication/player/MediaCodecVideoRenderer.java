@@ -103,7 +103,15 @@ public class MediaCodecVideoRenderer {
         mIsStart = true;
     }
 
+    public void reset() {
+        initPositionUs = 0;
+        renderedFirstFrame = false;
+        resetInputBuffer();
+        resetOutputBuffer();
+    }
+
     public void stop() {
+        reset();
         mIsStart = false;
     }
 
@@ -246,8 +254,6 @@ public class MediaCodecVideoRenderer {
 //            outputBuffers = codec.getOutputBuffers();
 //        }
     }
-
-
 
     // 丢掉整个gop
     private boolean maybeDropBuffersToKeyframe(MediaCodec codec, int index, long presentationTimeUs,

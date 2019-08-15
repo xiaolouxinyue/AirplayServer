@@ -23,8 +23,6 @@
  */
 package com.fang.myapplication.player;
 
-import android.annotation.SuppressLint;
-import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -33,8 +31,6 @@ import android.util.Log;
 
 import com.fang.myapplication.model.PCMPacket;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,16 +39,12 @@ public class AudioPlayer {
 
     private static final String TAG = "AudioPlayer";
 
-    @SuppressLint("InlinedApi")
-    private static final int WRITE_NON_BLOCKING = AudioTrack.WRITE_NON_BLOCKING;
-
     private AudioTrack mAudioTrack;
     private List<PCMPacket> mSyncList = Collections.synchronizedList(new ArrayList<>());
     private volatile boolean mIsStart = false;
     private final AudioTrackPositionTracker audioTrackPositionTracker;
     private long firstPts = 0;
-    private ByteBuffer avSyncHeader;
-    private int bytesUntilNextAvSync;
+    private long initUs = 0;
 
     public AudioPlayer() {
         int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
@@ -101,50 +93,6 @@ public class AudioPlayer {
         }
     }
 
-    @TargetApi(21)
-    private static int writeNonBlockingV21(AudioTrack audioTrack, ByteBuffer buffer, int size) {
-        return audioTrack.write(buffer, size, WRITE_NON_BLOCKING);
-    }
-
-    @TargetApi(21)
-    private int writeNonBlockingWithAvSyncV21(AudioTrack audioTrack, ByteBuffer buffer, int size,
-                                              long presentationTimeUs) {
-        // TODO: Uncomment this when [Internal ref: b/33627517] is clarified or fixed.
-        // if (Util.SDK_INT >= 23) {
-        //   // The underlying platform AudioTrack writes AV sync headers directly.
-        //   return audioTrack.write(buffer, size, WRITE_NON_BLOCKING, presentationTimeUs * 1000);
-        // }
-        if (avSyncHeader == null) {
-            avSyncHeader = ByteBuffer.allocate(16);
-            avSyncHeader.order(ByteOrder.BIG_ENDIAN);
-            avSyncHeader.putInt(0x55550001);
-        }
-        if (bytesUntilNextAvSync == 0) {
-            avSyncHeader.putInt(4, size);
-            avSyncHeader.putLong(8, presentationTimeUs * 1000);
-            avSyncHeader.position(0);
-            bytesUntilNextAvSync = size;
-        }
-        int avSyncHeaderBytesRemaining = avSyncHeader.remaining();
-        if (avSyncHeaderBytesRemaining > 0) {
-            int result = audioTrack.write(avSyncHeader, avSyncHeaderBytesRemaining, WRITE_NON_BLOCKING);
-            if (result < 0) {
-                bytesUntilNextAvSync = 0;
-                return result;
-            }
-            if (result < avSyncHeaderBytesRemaining) {
-                return 0;
-            }
-        }
-        int result = writeNonBlockingV21(audioTrack, buffer, size);
-        if (result < 0) {
-            bytesUntilNextAvSync = 0;
-            return result;
-        }
-        bytesUntilNextAvSync -= result;
-        return result;
-    }
-
     private byte[] short2byte(short[] sData) {
         int shortArrsize = sData.length;
         byte[] bytes = new byte[shortArrsize * 2];
@@ -162,15 +110,21 @@ public class AudioPlayer {
         mAudioTrack.play();
     }
 
+    public void reset() {
+        firstPts = 0;
+        initUs = 0;
+        mSyncList.clear();
+    }
+
     public void stop() {
-        mIsStart = false;
+        reset();
         if (mAudioTrack != null) {
             mAudioTrack.flush();
             mAudioTrack.stop();
             mAudioTrack.release();
             mAudioTrack = null;
         }
-        firstPts = 0;
+        mIsStart = false;
     }
 
     public long getPositionUs() {
@@ -181,7 +135,6 @@ public class AudioPlayer {
         return SystemClock.elapsedRealtime() * 1000;
     }
 
-    long initUs = 0;
     public void setStartTime(long time) {
         initUs = time;
     }

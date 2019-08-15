@@ -57,9 +57,15 @@ public class AVPlayer implements MediaTimeProvider, Handler.Callback {
         mHandler.sendEmptyMessage(MSG_DO_SOME_WORK);
     }
 
+    public void reset() {
+        mVideoPlayer.reset();
+        mAudioPlayer.reset();
+    }
+
     public void stop() {
         mHandler.removeCallbacks(null);
         mVideoPlayer.stop();
+        mAudioPlayer.stop();
     }
 
     public void setSurface(Surface surface) {

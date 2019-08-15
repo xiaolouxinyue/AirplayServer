@@ -38,7 +38,7 @@
 static JavaVM* g_JavaVM;
 
 void OnRecvAudioData(void *observer, pcm_data_struct *data) {
-    jobject obj = (jobject) observer;
+    auto obj = (jobject) observer;
     JNIEnv* jniEnv = NULL;
     g_JavaVM->AttachCurrentThread(&jniEnv, NULL);
     jclass cls = jniEnv->GetObjectClass(obj);
@@ -53,7 +53,7 @@ void OnRecvAudioData(void *observer, pcm_data_struct *data) {
 }
 
 void OnRecvVideoData(void *observer, h264_decode_struct *data) {
-    jobject obj = (jobject) observer;
+    auto obj = (jobject) observer;
     JNIEnv* jniEnv = NULL;
     g_JavaVM->AttachCurrentThread(&jniEnv, NULL);
     jclass cls = jniEnv->GetObjectClass(obj);
@@ -66,6 +66,17 @@ void OnRecvVideoData(void *observer, h264_decode_struct *data) {
                                          data->pts, data->pts, data->width, data->height);
     free(data->data);
     jniEnv->DeleteLocalRef(barr);
+    g_JavaVM->DetachCurrentThread();
+}
+
+void onRecvVideoDestroy(void *observer) {
+    auto obj = (jobject) observer;
+    JNIEnv* jniEnv = NULL;
+    g_JavaVM->AttachCurrentThread(&jniEnv, NULL);
+    jclass cls = jniEnv->GetObjectClass(obj);
+    jmethodID onRecvVideoDestroyM = jniEnv->GetMethodID(cls, "onRecvVideoDestroy", "()V");
+    jniEnv->DeleteLocalRef(cls);
+    jniEnv->CallVoidMethod(obj, onRecvVideoDestroyM);
     g_JavaVM->DetachCurrentThread();
 }
 
@@ -85,6 +96,12 @@ video_process(void *cls, h264_decode_struct *data)
     OnRecvVideoData(cls, data);
 }
 
+extern "C" void
+video_destroy(void *cls)
+{
+    onRecvVideoDestroy(cls);
+}
+
 extern "C" JNIEXPORT jint JNICALL
 JNI_OnLoad(JavaVM* vm, void* reserved) {
     g_JavaVM = vm;
@@ -97,7 +114,7 @@ Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstrin
     jbyte *hw_addr = env->GetByteArrayElements(hwAddr, 0);
     jsize hw_addr_len = env->GetArrayLength(hwAddr);
     void* cls = (void *) env->NewGlobalRef(object);
-    raop_server_t* raop_server = raop_server_init(cls, audio_process, video_process);
+    raop_server_t* raop_server = raop_server_init(cls, audio_process, video_process, video_destroy);
     raop_server_start(raop_server, device_name, (char*) hw_addr, hw_addr_len);
     env->ReleaseByteArrayElements(hwAddr, hw_addr, 0);
     env->ReleaseStringUTFChars(deviceName, device_name);
@@ -114,6 +131,6 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_fang_myapplication_RaopServer_stop(JNIEnv* env, jobject object, jlong opaque) {
     auto * raop_server = (raop_server_t *) (void *) opaque;
     auto obj = (jobject) raop_server_get_cls(raop_server);
-    env->DeleteGlobalRef(obj);
     raop_server_destroy(raop_server);
+    env->DeleteGlobalRef(obj);
 }

@@ -79,7 +79,15 @@ public class VideoPlayer {
         }
     }
 
+    public void reset() {
+        mSyncList.clear();
+        if (mRender != null) {
+            mRender.reset();
+        }
+    }
+
     public void stop() {
+        reset();
         if (mRender != null) {
             mRender.stop();
         }

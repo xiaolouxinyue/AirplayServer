@@ -46,6 +46,7 @@ public class RaopServer {
     private long byteLen = 0;
     private long frameCount = 0;
     private long lastTime = 0;
+    
     public RaopServer(Context context) {
         mContext = context;
         mAVPlayer = new AVPlayer(context);
@@ -93,6 +94,19 @@ public class RaopServer {
         pcmPacket.pts = pts - mBasePts;
         Log.d("AVSYNC", "recv audio  pts = " + pcmPacket.pts);
         mAVPlayer.addPacker(pcmPacket);
+    }
+
+    /**
+     * 视频销毁，代表一次连接结束
+     */
+    public void onRecvVideoDestroy() {
+        Log.d(TAG, "onRecvideoDestroy");
+        reset();
+    }
+
+    public void reset() {
+        mBasePts = 0;
+        mAVPlayer.reset();
     }
 
     public void startServer(String deviceName, byte[] hdAddr, int airplayPort) {
