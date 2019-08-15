@@ -25,15 +25,11 @@ If you understand the relevant protocols and algorithms, you will have a better 
 
 # third-party open source module
 
-- MDNS
-
-   - third_party/mDNSResponder
+- MDNS:third_party/mDNSResponder
 
      Apple open source mDNS function for device discovery, added CMake support
 
-- fdk-aac audio decoding
-
-   - third_party/fdk-aac
+- fdk-aac:third_party/fdk-aac
 
      For AAC audio decoding, added CMake support
 

@@ -24,15 +24,11 @@
 
 # 第三方开源模块
 
-- MDNS
-
-  - third_party/mDNSResponder
+- MDNS：third_party/mDNSResponder
 
     Apple开源mDNS功能，用于设备发现，添加了CMake支持
 
-- fdk-aac音频解码
-
-  - third_party/fdk-aac
+- fdk-aac音频解码：third_party/fdk-aac
 
     用于AAC音频解码，添加了CMake支持
 
