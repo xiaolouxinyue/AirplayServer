@@ -19,7 +19,6 @@
 
 #include "raop.h"
 #include "raop_rtp.h"
-#include "raop_rtp.h"
 #include "pairing.h"
 #include "httpd.h"
 
@@ -45,6 +44,8 @@ struct raop_s {
 	httpd_t *httpd;
 
     unsigned short port;
+	char *hw_addr;
+	int hw_addr_len;
 };
 
 struct raop_conn_s {
@@ -203,6 +204,9 @@ conn_destroy(void *ptr)
         /* This is done in case TEARDOWN was not called */
         raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
     }
+    if (conn->raop->hw_addr) {
+    	free(conn->raop->hw_addr);
+    }
 	free(conn->local);
 	free(conn->remote);
 	free(conn);
@@ -352,6 +356,15 @@ raop_get_callback_cls(raop_t *raop)
 {
     assert(raop);
     return raop->callbacks.cls;
+}
+
+void
+raop_set_hw_addr(raop_t *raop, const char* hw_addr, int hw_addr_len)
+{
+	assert(raop);
+	raop->hw_addr_len = hw_addr_len;
+	raop->hw_addr = calloc(1, raop->hw_addr_len);
+	memcpy(raop->hw_addr, hw_addr, hw_addr_len);
 }
 
 void

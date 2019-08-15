@@ -49,6 +49,7 @@ void raop_set_log_callback(raop_t *raop, raop_log_callback_t callback, void *cls
 void raop_set_port(raop_t *raop, unsigned short port);
 unsigned short raop_get_port(raop_t *raop);
 void *raop_get_callback_cls(raop_t *raop);
+void raop_set_hw_addr(raop_t *raop, const char* hw_addr, int hw_addr_len);
 int raop_start(raop_t *raop, unsigned short *port);
 int raop_is_running(raop_t *raop);
 void raop_stop(raop_t *raop);

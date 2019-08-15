@@ -123,6 +123,7 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
         return 0;
     }
     unsigned short port = 0;
+    raop_set_hw_addr(raop_server->raop, hw_addr, hw_addr_len);
     raop_start(raop_server->raop, &port);
     raop_set_port(raop_server->raop, port);
     int error;
