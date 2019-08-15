@@ -1,23 +1,44 @@
-# 简介
+[中文版](https://github.com/dsafa22/AirplayServer/blob/master/README_CN.md)
+# Introduction
 
-`Airplay2`是apple在`iOS11.3`中新加的特性，用作视频和音频的局域网投放
+`Airplay` screen mirror server based on `Android` and provide `WIN32` build. 99% written in C, easy to transplant, welcome to PR and ISSUE.
 
-`AirplayServer`作为接收端，可以接收来自支持`Airplay2`设备的数据
+# Supported delivery devices
 
-`AirplayServer`可运行在`Android`设备，代码99%是C语言编写，方便移植
+Support iPhone and Mac device screen delivery and music playback
 
-# 功能
+Support iOS system: iOS9~iOS13
 
-1. mDNS发布服务
-2. 握手协议
-3. 接收镜像数据
-4. MediaCodec硬解与展示
-5. 接收音频数据
-6. fdk-aac音频解码
-7. AudioTrack播放PCM音乐
+Support for MacOS system: 10.14 (low version not tested)
 
-# 演示截图
+# Protocols and algorithms involved
 
-下图是一次屏幕数据和音乐的投放演示，其中`iPhone`的系统是`iOS12`
+If you understand the relevant protocols and algorithms, you will have a better understanding of the code.
+
+1. Protocol: RTSP, RTCP, RTP, DNS, DNS-SD, mDNS, NTP
+
+2. Encryption and decryption algorithm: AES (cbc & ctr)
+
+3. Signature algorithm: curve25519, ed25519
+
+3. Audio and video basics: H264 encoding, AAC encoding
+
+# third-party open source module
+
+- MDNS
+
+   - third_party/mDNSResponder
+
+     Apple open source mDNS function for device discovery, added CMake support
+
+- fdk-aac audio decoding
+
+   - third_party/fdk-aac
+
+     For AAC audio decoding, added CMake support
+
+# Screenshot
+
+The following picture is a presentation of screen data and music, where the system of `iPhone` is `iOS12`
 
 ![](https://ww1.sinaimg.cn/large/007rAy9hgy1g0l65hwvg7j30u01o0juj.jpg)
