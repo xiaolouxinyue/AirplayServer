@@ -22,8 +22,6 @@ import android.media.AudioTrack;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 
-import com.google.android.exoplayer2.C;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -192,7 +190,7 @@ class AudioTimestampPoller {
      * the system time at which the latest timestamp was sampled, in microseconds.
      */
     public long getTimestampSystemTimeUs() {
-        return audioTimestamp != null ? audioTimestamp.getTimestampSystemTimeUs() : C.TIME_UNSET;
+        return audioTimestamp != null ? audioTimestamp.getTimestampSystemTimeUs() : Constant.TIME_UNSET;
     }
 
     /**
@@ -200,7 +198,7 @@ class AudioTimestampPoller {
      * the latest timestamp's position in frames.
      */
     public long getTimestampPositionFrames() {
-        return audioTimestamp != null ? audioTimestamp.getTimestampPositionFrames() : C.POSITION_UNSET;
+        return audioTimestamp != null ? audioTimestamp.getTimestampPositionFrames() : Constant.POSITION_UNSET;
     }
 
     private void updateState(@State int state) {
@@ -209,7 +207,7 @@ class AudioTimestampPoller {
             case STATE_INITIALIZING:
                 // Force polling a timestamp immediately, and poll quickly.
                 lastTimestampSampleTimeUs = 0;
-                initialTimestampPositionFrames = C.POSITION_UNSET;
+                initialTimestampPositionFrames = Constant.POSITION_UNSET;
                 initializeSystemTimeUs = System.nanoTime() / 1000;
                 sampleIntervalUs = FAST_POLL_INTERVAL_US;
                 break;

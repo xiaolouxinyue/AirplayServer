@@ -116,7 +116,6 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
         if (raopPort == 0) {
             Toast.makeText(this.getApplicationContext(), "启动raop服务失败", Toast.LENGTH_SHORT).show();
         }
-        Log.d(TAG, "airplayPort = none, raopPort = " + raopPort);
     }
 
     private void stopServer() {

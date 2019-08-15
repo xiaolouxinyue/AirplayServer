@@ -21,16 +21,15 @@ import android.os.SystemClock;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.util.Assertions;
-import com.google.android.exoplayer2.util.Util;
+import com.fang.myapplication.util.Assertions;
+import com.fang.myapplication.util.Util;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 
-import static com.google.android.exoplayer2.util.Util.castNonNull;
+import static com.fang.myapplication.util.Util.castNonNull;
 
 class AudioTrackPositionTracker {
 
@@ -106,14 +105,14 @@ class AudioTrackPositionTracker {
      *
      * <p>This is a fail safe that should not be required on correctly functioning devices.
      */
-    private static final long MAX_AUDIO_TIMESTAMP_OFFSET_US = 5 * C.MICROS_PER_SECOND;
+    private static final long MAX_AUDIO_TIMESTAMP_OFFSET_US = 5 * Constant.MICROS_PER_SECOND;
 
     /**
      * AudioTrack latencies are deemed impossibly large if they are greater than this amount.
      *
      * <p>This is a fail safe that should not be required on correctly functioning devices.
      */
-    private static final long MAX_LATENCY_US = 5 * C.MICROS_PER_SECOND;
+    private static final long MAX_LATENCY_US = 5 * Constant.MICROS_PER_SECOND;
 
     private static final long FORCE_RESET_WORKAROUND_TIMEOUT_MS = 200;
 
@@ -183,7 +182,7 @@ class AudioTrackPositionTracker {
      */
     public void setAudioTrack(
             AudioTrack audioTrack,
-            @C.Encoding int outputEncoding,
+            @Constant.Encoding int outputEncoding,
             int outputPcmFrameSize,
             int bufferSize) {
         this.audioTrack = audioTrack;
@@ -193,13 +192,13 @@ class AudioTrackPositionTracker {
         outputSampleRate = audioTrack.getSampleRate();
         needsPassthroughWorkarounds = needsPassthroughWorkarounds(outputEncoding);
         isOutputPcm = Util.isEncodingLinearPcm(outputEncoding);
-        bufferSizeUs = isOutputPcm ? framesToDurationUs(bufferSize / outputPcmFrameSize) : C.TIME_UNSET;
+        bufferSizeUs = isOutputPcm ? framesToDurationUs(bufferSize / outputPcmFrameSize) : Constant.TIME_UNSET;
         lastRawPlaybackHeadPosition = 0;
         rawPlaybackHeadWrapCount = 0;
         passthroughWorkaroundPauseOffset = 0;
         hasData = false;
-        stopTimestampUs = C.TIME_UNSET;
-        forceResetWorkaroundTimeMs = C.TIME_UNSET;
+        stopTimestampUs = Constant.TIME_UNSET;
+        forceResetWorkaroundTimeMs = Constant.TIME_UNSET;
         latencyUs = 0;
     }
 
@@ -278,7 +277,7 @@ class AudioTrackPositionTracker {
         boolean hadData = hasData;
         hasData = hasPendingData(writtenFrames);
         if (hadData && !hasData && playState != PLAYSTATE_STOPPED && listener != null) {
-            listener.onUnderrun(bufferSize, C.usToMs(bufferSizeUs));
+            listener.onUnderrun(bufferSize, Constant.usToMs(bufferSizeUs));
         }
 
         return true;
@@ -300,7 +299,7 @@ class AudioTrackPositionTracker {
 
     /** Returns whether the track is in an invalid state and must be recreated. */
     public boolean isStalled(long writtenFrames) {
-        return forceResetWorkaroundTimeMs != C.TIME_UNSET
+        return forceResetWorkaroundTimeMs != Constant.TIME_UNSET
                 && writtenFrames > 0
                 && SystemClock.elapsedRealtime() - forceResetWorkaroundTimeMs
                 >= FORCE_RESET_WORKAROUND_TIMEOUT_MS;
@@ -336,7 +335,7 @@ class AudioTrackPositionTracker {
      */
     public boolean pause() {
         resetSyncParams();
-        if (stopTimestampUs == C.TIME_UNSET) {
+        if (stopTimestampUs == Constant.TIME_UNSET) {
             // The audio track is going to be paused, so reset the timestamp poller to ensure it doesn't
             // supply an advancing position.
             Assertions.checkNotNull(audioTimestampPoller).reset();
@@ -443,7 +442,7 @@ class AudioTrackPositionTracker {
     }
 
     private long framesToDurationUs(long frameCount) {
-        return (frameCount * C.MICROS_PER_SECOND) / outputSampleRate;
+        return (frameCount * Constant.MICROS_PER_SECOND) / outputSampleRate;
     }
 
     private void resetSyncParams() {
@@ -468,9 +467,9 @@ class AudioTrackPositionTracker {
      * Returns whether to work around problems with passthrough audio tracks. See [Internal:
      * b/18899620, b/19187573, b/21145353].
      */
-    private static boolean needsPassthroughWorkarounds(@C.Encoding int outputEncoding) {
+    private static boolean needsPassthroughWorkarounds(@Constant.Encoding int outputEncoding) {
         return Util.SDK_INT < 23
-                && (outputEncoding == C.ENCODING_AC3 || outputEncoding == C.ENCODING_E_AC3);
+                && (outputEncoding == Constant.ENCODING_AC3 || outputEncoding == Constant.ENCODING_E_AC3);
     }
 
     private long getPlaybackHeadPositionUs() {
@@ -487,10 +486,10 @@ class AudioTrackPositionTracker {
      */
     private long getPlaybackHeadPosition() {
         AudioTrack audioTrack = Assertions.checkNotNull(this.audioTrack);
-        if (stopTimestampUs != C.TIME_UNSET) {
+        if (stopTimestampUs != Constant.TIME_UNSET) {
             // Simulate the playback head position up to the total number of frames submitted.
             long elapsedTimeSinceStopUs = (SystemClock.elapsedRealtime() * 1000) - stopTimestampUs;
-            long framesSinceStop = (elapsedTimeSinceStopUs * outputSampleRate) / C.MICROS_PER_SECOND;
+            long framesSinceStop = (elapsedTimeSinceStopUs * outputSampleRate) / Constant.MICROS_PER_SECOND;
             return Math.min(endPlaybackHeadPosition, stopPlaybackHeadPosition + framesSinceStop);
         }
 
@@ -520,12 +519,12 @@ class AudioTrackPositionTracker {
                 // happens the playback head position gets stuck at zero. In this case, return the old
                 // playback head position and force the track to be reset after
                 // {@link #FORCE_RESET_WORKAROUND_TIMEOUT_MS} has elapsed.
-                if (forceResetWorkaroundTimeMs == C.TIME_UNSET) {
+                if (forceResetWorkaroundTimeMs == Constant.TIME_UNSET) {
                     forceResetWorkaroundTimeMs = SystemClock.elapsedRealtime();
                 }
                 return lastRawPlaybackHeadPosition;
             } else {
-                forceResetWorkaroundTimeMs = C.TIME_UNSET;
+                forceResetWorkaroundTimeMs = Constant.TIME_UNSET;
             }
         }
 

@@ -30,14 +30,13 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import com.fang.myapplication.model.NALPacket;
-import com.google.android.exoplayer2.C;
 
 import java.nio.ByteBuffer;
 
 public class MediaCodecVideoRenderer {
 
     private int inputIndex;
-    private int outputIndex = C.INDEX_UNSET;
+    private int outputIndex = -1;
     private MediaCodec codec;
     private ByteBuffer outputBuffer;
     private MediaCodec.BufferInfo outputBufferInfo = new MediaCodec.BufferInfo();
@@ -215,11 +214,11 @@ public class MediaCodecVideoRenderer {
     }
 
     private void resetInputBuffer() {
-        inputIndex = C.INDEX_UNSET;
+        inputIndex = -1;
     }
 
     private void resetOutputBuffer() {
-        outputIndex = C.INDEX_UNSET;
+        outputIndex = -1;
         outputBuffer = null;
     }
 

@@ -55,7 +55,6 @@ public class VideoPlayer {
     public VideoPlayer(Context context, MediaTimeProvider mediaTimeProvider) {
         mContext = context;
         mMediaTimeProvider = mediaTimeProvider;
-
     }
 
     public void setSurface(Surface surface) {

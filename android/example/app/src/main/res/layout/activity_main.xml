@@ -23,6 +23,6 @@
         android:layout_toRightOf="@id/btn_control"
         android:layout_marginLeft="15dp"
         android:layout_alignBaseline="@id/btn_control"
-        android:textColor="#ffffff"
+        android:textColor="#000"
         />
 </RelativeLayout>

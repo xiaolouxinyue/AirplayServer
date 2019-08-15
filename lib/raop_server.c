@@ -144,6 +144,7 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
     }
     int err = dnssd_register_raop(raop_server->dnssd, port);
     if (err == DNSSD_ERROR_NOERROR) {
+        /* airplay port for video, not use now*/
         dnssd_register_airplay(raop_server->dnssd, port + 1);
     } else {
         raop_stop(raop_server->raop);

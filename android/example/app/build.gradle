@@ -52,11 +52,11 @@ def exoplayerVersion = '2.10.3'
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     testImplementation 'junit:junit:4.12'
-    implementation "com.google.android.exoplayer:exoplayer-core:${exoplayerVersion}"
-    implementation "com.google.android.exoplayer:exoplayer-ui:${exoplayerVersion}"
-    implementation "com.google.android.exoplayer:exoplayer-hls:${exoplayerVersion}"
-    implementation "com.google.android.exoplayer:exoplayer-dash:${exoplayerVersion}"
-    implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:${exoplayerVersion}"
+//    implementation "com.google.android.exoplayer:exoplayer-core:${exoplayerVersion}"
+//    implementation "com.google.android.exoplayer:exoplayer-ui:${exoplayerVersion}"
+//    implementation "com.google.android.exoplayer:exoplayer-hls:${exoplayerVersion}"
+//    implementation "com.google.android.exoplayer:exoplayer-dash:${exoplayerVersion}"
+//    implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:${exoplayerVersion}"
     implementation 'androidx.annotation:annotation:1.1.0'
     implementation 'androidx.legacy:legacy-support-core-ui:1.0.0'
     implementation 'androidx.fragment:fragment:1.0.0'

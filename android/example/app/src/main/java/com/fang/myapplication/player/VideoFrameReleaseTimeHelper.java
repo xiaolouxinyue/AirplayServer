@@ -26,8 +26,8 @@ import android.view.Choreographer;
 import android.view.Choreographer.FrameCallback;
 import android.view.Display;
 import android.view.WindowManager;
-import com.google.android.exoplayer2.C;
-import com.google.android.exoplayer2.util.Util;
+
+import com.fang.myapplication.util.Util;
 
 /**
  * Makes a best effort to adjust frame release timestamps for a smoother visual result.
@@ -84,8 +84,8 @@ public final class VideoFrameReleaseTimeHelper {
       displayListener = null;
       vsyncSampler = null;
     }
-    vsyncDurationNs = C.TIME_UNSET;
-    vsyncOffsetNs = C.TIME_UNSET;
+    vsyncDurationNs = Constant.TIME_UNSET;
+    vsyncOffsetNs = Constant.TIME_UNSET;
   }
 
   /**
@@ -138,7 +138,7 @@ public final class VideoFrameReleaseTimeHelper {
       }
       if (frameCount >= MIN_FRAMES_FOR_ADJUSTMENT) {
         // We're synced and have waited the required number of frames to apply an adjustment.
-        // Calculate the average frame time across all the frames we've seen since the last sync.
+        // Calculate the average frame time across all the frames we've seen since the last synConstant.
         // This will typically give us a frame rate at a finer granularity than the frame times
         // themselves (which often only have millisecond granularity).
         long averageFrameDurationNs = (framePresentationTimeNs - syncFramePresentationTimeNs)
@@ -173,15 +173,15 @@ public final class VideoFrameReleaseTimeHelper {
     lastFramePresentationTimeUs = framePresentationTimeUs;
     pendingAdjustedFrameTimeNs = adjustedFrameTimeNs;
 
-    if (vsyncSampler == null || vsyncDurationNs == C.TIME_UNSET) {
+    if (vsyncSampler == null || vsyncDurationNs == Constant.TIME_UNSET) {
       return adjustedReleaseTimeNs;
     }
     long sampledVsyncTimeNs = vsyncSampler.sampledVsyncTimeNs;
-    if (sampledVsyncTimeNs == C.TIME_UNSET) {
+    if (sampledVsyncTimeNs == Constant.TIME_UNSET) {
       return adjustedReleaseTimeNs;
     }
 
-    // Find the timestamp of the closest vsync. This is the vsync that we're targeting.
+    // Find the timestamp of the closest vsynConstant. This is the vsync that we're targeting.
     long snappedTimeNs = closestVsync(adjustedReleaseTimeNs, sampledVsyncTimeNs, vsyncDurationNs);
     // Apply an offset so that we release before the target vsync, but after the previous one.
     return snappedTimeNs - vsyncOffsetNs;
@@ -198,7 +198,7 @@ public final class VideoFrameReleaseTimeHelper {
     Display defaultDisplay = windowManager.getDefaultDisplay();
     if (defaultDisplay != null) {
       double defaultDisplayRefreshRate = defaultDisplay.getRefreshRate();
-      vsyncDurationNs = (long) (C.NANOS_PER_SECOND / defaultDisplayRefreshRate);
+      vsyncDurationNs = (long) (Constant.NANOS_PER_SECOND / defaultDisplayRefreshRate);
       vsyncOffsetNs = (vsyncDurationNs * VSYNC_OFFSET_PERCENTAGE) / 100;
     }
   }
@@ -287,10 +287,10 @@ public final class VideoFrameReleaseTimeHelper {
     }
 
     private VSyncSampler() {
-      sampledVsyncTimeNs = C.TIME_UNSET;
+      sampledVsyncTimeNs = Constant.TIME_UNSET;
       choreographerOwnerThread = new HandlerThread("ChoreographerOwner:Handler");
       choreographerOwnerThread.start();
-      handler = Util.createHandler(choreographerOwnerThread.getLooper(), /* callback= */ this);
+      handler = new Handler(choreographerOwnerThread.getLooper(), /* callback= */ this);
       handler.sendEmptyMessage(CREATE_CHOREOGRAPHER);
     }
 
@@ -352,7 +352,7 @@ public final class VideoFrameReleaseTimeHelper {
       observerCount--;
       if (observerCount == 0) {
         choreographer.removeFrameCallback(this);
-        sampledVsyncTimeNs = C.TIME_UNSET;
+        sampledVsyncTimeNs = Constant.TIME_UNSET;
       }
     }
 

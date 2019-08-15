@@ -32,7 +32,6 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import com.fang.myapplication.model.PCMPacket;
-import com.google.android.exoplayer2.C;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -84,7 +83,7 @@ public class AudioPlayer {
 
             }
         });
-        audioTrackPositionTracker.setAudioTrack(mAudioTrack, C.ENCODING_PCM_16BIT, 4, bufferSize);
+        audioTrackPositionTracker.setAudioTrack(mAudioTrack, Constant.ENCODING_PCM_16BIT, 4, bufferSize);
     }
 
     public void addPacker(PCMPacket pcmPacket) {
@@ -98,22 +97,7 @@ public class AudioPlayer {
         if (!mSyncList.isEmpty()) {
             PCMPacket pcmPacket = mSyncList.remove(0);
             Log.d("AVSYNC","audio process pts = " + pcmPacket.pts);
-            long time = System.currentTimeMillis();
-            // 错误
-//            for (short s : pcmPacket.data) {
-//                byteBuf.putShort(s);
-//            }
-//            ByteBuffer byteBuf = ByteBuffer.allocate(1920);
-//            byteBuf.put(short2byte(pcmPacket.data));
-//            byteBuf.flip();
-            //mAudioTrack.write(pcmPacket.data, 0, 960);
-            mAudioTrack.write(short2byte(pcmPacket.data), 0, 1920);
-            //int written = writeNonBlockingWithAvSyncV21(mAudioTrack, byteBuf, 1920, pcmPacket.pts);
-//            if (written < 0) {
-//                throw new RuntimeException("Audiotrack.write() failed.");
-//            }
-            Log.d("TEST","time = " + (System.currentTimeMillis() - time));
-            //mIsStart = true;
+            mAudioTrack.write(pcmPacket.data, 0, 960);
         }
     }
 
@@ -160,7 +144,6 @@ public class AudioPlayer {
         bytesUntilNextAvSync -= result;
         return result;
     }
-
 
     private byte[] short2byte(short[] sData) {
         int shortArrsize = sData.length;

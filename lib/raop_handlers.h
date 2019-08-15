@@ -29,7 +29,6 @@ raop_handler_info(raop_conn_t *conn,
                   http_request_t *request, http_response_t *response,
                   char **response_data, int *response_datalen)
 {
-    //char *hw_addr = "aa:54:01:af:c3:c1";
     int pk_len = 0;
     char *pk = utils_hexstr_to_byte(AIRPLAY_PK, strlen(AIRPLAY_PK), &pk_len);
     char device_id[3 * MAX_HWADDR_LEN];
