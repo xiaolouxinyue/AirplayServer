@@ -23,7 +23,7 @@ If you understand the relevant protocols and algorithms, you will have a better 
 
 3. Audio and video basics: H264 encoding, AAC encoding
 
-# third-party open source module
+# Third-party open source module
 
 - MDNS:third_party/mDNSResponder
 
