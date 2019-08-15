@@ -53,6 +53,13 @@ audio_set_volume(void *cls, void *opaque, float volume)
     session->volume = powf(10.0, 0.05 * volume);
 }
 
+
+static void
+video_destroy(void *cls)
+{
+
+}
+
 static void
 log_callback(void *cls, int level, const char *msg) {
     switch (level) {
@@ -99,6 +106,7 @@ raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callb
     raop_cbs.audio_destroy = audio_destroy;
     raop_cbs.audio_set_volume = audio_set_volume;
     raop_cbs.video_process = video_callback;
+    raop_cbs.video_destroy = video_destroy;
     raop_server->raop = raop_init(10, &raop_cbs);
     if (raop_server->raop == NULL) {
         LOGE("raop = NULL");
@@ -173,7 +181,7 @@ raop_server_get_port(raop_server_t* raop_server)
 void*
 raop_server_get_cls(raop_server_t* raop_server)
 {
-    raop_get_callback_cls(raop_server->raop);
+    return raop_get_callback_cls(raop_server->raop);
 }
 
 void

@@ -29,18 +29,19 @@ raop_handler_info(raop_conn_t *conn,
                   http_request_t *request, http_response_t *response,
                   char **response_data, int *response_datalen)
 {
-    char *hw_addr = "aa:54:01:af:c3:c1";
+    //char *hw_addr = "aa:54:01:af:c3:c1";
     int pk_len = 0;
     char *pk = utils_hexstr_to_byte(AIRPLAY_PK, strlen(AIRPLAY_PK), &pk_len);
-
+    char device_id[3 * MAX_HWADDR_LEN];
+    utils_hwaddr_airplay(device_id, sizeof(device_id), conn->raop->hw_addr, conn->raop->hw_addr_len);
     plist_t r_node = plist_new_dict();
     plist_t source_version_node = plist_new_string(AIRPLAY_SRCVERS);
     plist_dict_set_item(r_node, "sourceVersion", source_version_node);
     plist_t status_flags_node = plist_new_uint(68);
     plist_dict_set_item(r_node, "statusFlags", status_flags_node);
-    plist_t mac_address_node = plist_new_string(hw_addr);
+    plist_t mac_address_node = plist_new_string(device_id);
     plist_dict_set_item(r_node, "macAddress", mac_address_node);
-    plist_t device_id_node = plist_new_string(hw_addr);
+    plist_t device_id_node = plist_new_string(device_id);
     plist_dict_set_item(r_node, "deviceID", device_id_node);
     plist_t name_node = plist_new_string("AppleTV");
     plist_dict_set_item(r_node, "name", name_node);

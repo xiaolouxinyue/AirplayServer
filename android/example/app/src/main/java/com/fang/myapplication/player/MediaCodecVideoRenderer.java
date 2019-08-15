@@ -53,16 +53,14 @@ public class MediaCodecVideoRenderer {
 
     private VideoPlayer videoPlayer;
     private long initPositionUs = 0;
+    private volatile boolean mIsStart = false;
 
-    public MediaCodecVideoRenderer(Context context, VideoPlayer videoPlayer) {
+    public MediaCodecVideoRenderer(Context context, MediaCodec codec, VideoPlayer videoPlayer) {
+        this.codec = codec;
         frameReleaseTimeHelper = new VideoFrameReleaseTimeHelper(context.getApplicationContext());
         this.videoPlayer = videoPlayer;
         resetInputBuffer();
         resetOutputBuffer();
-    }
-
-    public void setCodec(MediaCodec mediaCodec) {
-        codec = mediaCodec;
     }
 
     /**
@@ -76,7 +74,7 @@ public class MediaCodecVideoRenderer {
     }
 
     public boolean feedInputBuffer(long positionUs) {
-        if (codec == null) {
+        if (codec == null || !mIsStart) {
             return false;
         }
         if (inputIndex < 0) {
@@ -102,7 +100,18 @@ public class MediaCodecVideoRenderer {
         return true;
     }
 
+    public void start() {
+        mIsStart = true;
+    }
+
+    public void stop() {
+        mIsStart = false;
+    }
+
     private boolean drainOutputBuffer(long positionUs, long elapsedRealtimeUs) {
+        if (!mIsStart) {
+            return false;
+        }
         if (!hasOutputBuffer()) {
             int outputIndex = codec.dequeueOutputBuffer(outputBufferInfo, 0);
             if (outputIndex < 0) {
@@ -122,7 +131,6 @@ public class MediaCodecVideoRenderer {
                 outputBuffer.limit(outputBufferInfo.offset + outputBufferInfo.size);
             }
         }
-        //positionUs = lastPositionUs == -1 ? positionUs : lastPositionUs;
         boolean processedOutputBuffer = processOutputBuffer(positionUs, elapsedRealtimeUs, outputIndex, outputBufferInfo.presentationTimeUs);
         if (processedOutputBuffer) {
             resetOutputBuffer();

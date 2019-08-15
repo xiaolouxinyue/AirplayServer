@@ -26,8 +26,6 @@ package com.fang.myapplication.player;
 import android.content.Context;
 import android.media.MediaCodec;
 import android.media.MediaFormat;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.Surface;
@@ -35,21 +33,16 @@ import android.view.Surface;
 import com.fang.myapplication.MainActivity;
 import com.fang.myapplication.model.NALPacket;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class VideoPlayer {
 
     private static final String TAG = "VideoPlayer";
 
     private static final int VIDEO_WIDTH = 540;
-    private static final int VIDEO_HEIGHT = 540;
+    private static final int VIDEO_HEIGHT = 960;
     private String mMimeType = "video/avc";
     private MediaCodec mCodec = null;
     private List<NALPacket> mSyncList = Collections.synchronizedList(new ArrayList<>());
@@ -62,7 +55,7 @@ public class VideoPlayer {
     public VideoPlayer(Context context, MediaTimeProvider mediaTimeProvider) {
         mContext = context;
         mMediaTimeProvider = mediaTimeProvider;
-        mRender = new MediaCodecVideoRenderer(context, this);
+
     }
 
     public void setSurface(Surface surface) {
@@ -80,13 +73,17 @@ public class VideoPlayer {
             mCodec.configure(format, mSurface, null, 0);
             mCodec.setVideoScalingMode(MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT);
             mCodec.start();
-            mRender.setCodec(mCodec);
+            mRender = new MediaCodecVideoRenderer(mContext, mCodec, this);
+            mRender.start();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
     public void stop() {
+        if (mRender != null) {
+            mRender.stop();
+        }
         if (mCodec != null) {
             mCodec.stop();
             mCodec.release();
@@ -96,10 +93,6 @@ public class VideoPlayer {
 
     public void addPacker(NALPacket nalPacket) {
         mSyncList.add(nalPacket);
-    }
-
-    public MediaCodec getCodec() {
-        return mCodec;
     }
 
     // 读取数据

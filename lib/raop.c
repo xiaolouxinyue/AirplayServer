@@ -30,7 +30,7 @@
 #include "raop_rtp_mirror.h"
 
 struct raop_s {
-	/* Callbacks for audio */
+	/* Callbacks for video and audio */
 	raop_callbacks_t callbacks;
 
 	/* Logger instance */
@@ -62,6 +62,7 @@ struct raop_conn_s {
 typedef struct raop_conn_s raop_conn_t;
 
 #include "raop_handlers.h"
+#include "log.h"
 
 static void *
 conn_init(void *opaque, unsigned char *local, int locallen, unsigned char *remote, int remotelen)
@@ -231,7 +232,9 @@ raop_init(int max_clients, raop_callbacks_t *callbacks)
 	/* Validate the callbacks structure */
 	if (!callbacks->audio_init ||
 		!callbacks->audio_process ||
-		!callbacks->audio_destroy) {
+		!callbacks->audio_destroy ||
+		!callbacks->video_process ||
+		!callbacks->video_destroy) {
 		return NULL;
 	}
 

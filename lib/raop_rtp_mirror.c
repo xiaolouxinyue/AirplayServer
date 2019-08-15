@@ -596,8 +596,8 @@ void raop_rtp_mirror_destroy(raop_rtp_mirror_t *raop_rtp_mirror) {
         MUTEX_DESTROY(raop_rtp_mirror->time_mutex);
         COND_DESTROY(raop_rtp_mirror->time_cond);
         mirror_buffer_destroy(raop_rtp_mirror->buffer);
-	raop_rtp_mirror->callbacks.video_destroy(raop_rtp_mirror->callbacks.cls);
-	free(raop_rtp_mirror);
+	    raop_rtp_mirror->callbacks.video_destroy(raop_rtp_mirror->callbacks.cls);
+	    free(raop_rtp_mirror);
     }
 }
 

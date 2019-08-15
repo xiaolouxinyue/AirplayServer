@@ -42,12 +42,12 @@ void OnRecvAudioData(void *observer, pcm_data_struct *data) {
     JNIEnv* jniEnv = NULL;
     g_JavaVM->AttachCurrentThread(&jniEnv, NULL);
     jclass cls = jniEnv->GetObjectClass(obj);
-    jmethodID onRecvVideoDataM = jniEnv->GetMethodID(cls, "onRecvAudioData", "([SJ)V");
+    jmethodID onRecvAudioDataM = jniEnv->GetMethodID(cls, "onRecvAudioData", "([SJ)V");
     jniEnv->DeleteLocalRef(cls);
     jshortArray sarr = jniEnv->NewShortArray(data->data_len);
     if (sarr == NULL) return;
     jniEnv->SetShortArrayRegion(sarr, (jint) 0, data->data_len, (jshort *) data->data);
-    jniEnv->CallVoidMethod(obj, onRecvVideoDataM, sarr, (uint64_t) data->pts);
+    jniEnv->CallVoidMethod(obj, onRecvAudioDataM, sarr, (uint64_t) data->pts);
     jniEnv->DeleteLocalRef(sarr);
     g_JavaVM->DetachCurrentThread();
 }
