@@ -109,7 +109,7 @@ JNI_OnLoad(JavaVM* vm, void* reserved) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstring deviceName, jbyteArray hwAddr, jint airplayPort) {
+Java_com_fang_myapplication_RaopServer_start(JNIEnv* env, jobject object, jstring deviceName, jbyteArray hwAddr) {
     const char *device_name = env->GetStringUTFChars(deviceName, 0);
     jbyte *hw_addr = env->GetByteArrayElements(hwAddr, 0);
     jsize hw_addr_len = env->GetArrayLength(hwAddr);

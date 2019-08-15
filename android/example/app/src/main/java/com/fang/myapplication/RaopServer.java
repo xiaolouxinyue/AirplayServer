@@ -46,7 +46,7 @@ public class RaopServer {
     private long byteLen = 0;
     private long frameCount = 0;
     private long lastTime = 0;
-    
+
     public RaopServer(Context context) {
         mContext = context;
         mAVPlayer = new AVPlayer(context);
@@ -97,7 +97,7 @@ public class RaopServer {
     }
 
     /**
-     * 视频销毁，代表一次连接结束
+     * 视频销毁，代表一次连接结束，这个时候dnssd并没有销毁，可以继续连接
      */
     public void onRecvVideoDestroy() {
         Log.d(TAG, "onRecvideoDestroy");
@@ -109,9 +109,9 @@ public class RaopServer {
         mAVPlayer.reset();
     }
 
-    public void startServer(String deviceName, byte[] hdAddr, int airplayPort) {
+    public void startServer(String deviceName, byte[] hdAddr) {
         if (mServerId == 0) {
-            mServerId = start(deviceName, hdAddr, airplayPort);
+            mServerId = start(deviceName, hdAddr);
         }
         mAVPlayer.start();
     }
@@ -132,7 +132,7 @@ public class RaopServer {
         return 0;
     }
 
-    private native long start(String deviceName, byte[] hdAddr, int airplayPort);
+    private native long start(String deviceName, byte[] hdAddr);
     private native void stop(long serverId);
     private native int getPort(long serverId);
 

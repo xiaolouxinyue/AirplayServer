@@ -111,7 +111,7 @@ public class MainActivity extends Activity implements View.OnClickListener, Text
 
     private void startServer() {
         changeDeviceName();
-        mRaopServer.startServer(mDeviceName, mMacAddress, 0);
+        mRaopServer.startServer(mDeviceName, mMacAddress);
         int raopPort = mRaopServer.getPort();
         if (raopPort == 0) {
             Toast.makeText(this.getApplicationContext(), "启动raop服务失败", Toast.LENGTH_SHORT).show();
