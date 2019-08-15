@@ -214,13 +214,6 @@ dnssd_unregister_airplay(dnssd_t *dnssd)
     }
 }
 
-char *
-dnssd_get_hw_addr(dnssd_t *dnssd, int *length)
-{
-    *length = dnssd->hw_addr_len;
-    return dnssd->hw_addr;
-}
-
 void
 dnssd_destroy(dnssd_t *dnssd)
 {
