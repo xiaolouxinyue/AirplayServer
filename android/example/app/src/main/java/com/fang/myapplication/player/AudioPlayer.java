@@ -45,14 +45,12 @@ public class AudioPlayer {
     private final AudioTrackPositionTracker audioTrackPositionTracker;
     private long firstPts = 0;
     private long initUs = 0;
-
+    int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
+    int sampleRate = 44100;
+    int channel = AudioFormat.CHANNEL_OUT_STEREO;
     public AudioPlayer() {
-        int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-        int sampleRate = 44100;
-        int channel = AudioFormat.CHANNEL_OUT_STEREO;
-        int bufferSize = AudioTrack.getMinBufferSize(sampleRate, channel, audioFormat);
         mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, channel, audioFormat,
-                bufferSize, AudioTrack.MODE_STREAM);
+                AudioTrack.getMinBufferSize(sampleRate, channel, audioFormat), AudioTrack.MODE_STREAM);
 
         audioTrackPositionTracker = new AudioTrackPositionTracker(new com.fang.myapplication.player.AudioTrackPositionTracker.Listener() {
             @Override
@@ -75,7 +73,7 @@ public class AudioPlayer {
 
             }
         });
-        audioTrackPositionTracker.setAudioTrack(mAudioTrack, Constant.ENCODING_PCM_16BIT, 4, bufferSize);
+        audioTrackPositionTracker.setAudioTrack(mAudioTrack, Constant.ENCODING_PCM_16BIT, 4, AudioTrack.getMinBufferSize(sampleRate, channel, audioFormat));
     }
 
     public void addPacker(PCMPacket pcmPacket) {
@@ -106,6 +104,10 @@ public class AudioPlayer {
 
     public void start() {
         mIsStart = true;
+        if (mAudioTrack == null) {
+            mAudioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, sampleRate, channel, audioFormat,
+                    AudioTrack.getMinBufferSize(sampleRate, channel, audioFormat), AudioTrack.MODE_STREAM);
+        }
         audioTrackPositionTracker.start();
         mAudioTrack.play();
     }
