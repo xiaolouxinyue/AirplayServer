@@ -168,42 +168,60 @@ raop_rtp_mirror_thread_time(void *arg)
             break;
         }
         MUTEX_UNLOCK(raop_rtp_mirror->run_mutex);
-        uint64_t send_time = now_us() - base + rec_pts;
-
-        byteutils_put_timeStamp(time, 40, send_time);
-        logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time send time 48 bytes, port = %d", raop_rtp_mirror->mirror_timing_rport);
-        struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp_mirror->remote_saddr;
-        addr->sin_port = htons(raop_rtp_mirror->mirror_timing_rport);
-        int sendlen = sendto(raop_rtp_mirror->mirror_time_sock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp_mirror->remote_saddr, raop_rtp_mirror->remote_saddr_len);
-		logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
-		if (sendlen < 0)
-		{
-			break;
-		}
-
-        saddrlen = sizeof(saddr);
-        packetlen = recvfrom(raop_rtp_mirror->mirror_time_sock, (char *)packet, sizeof(packet), 0,
-                             (struct sockaddr *)&saddr, &saddrlen);
-		logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time receive time packetlen = %d", packetlen);
-		if (packetlen < 0)
-		{
-			break;
-		}
-        /* 16-24 系统时钟最后一次被设定或更新的时间。 */
-        uint64_t Reference_Timestamp = byteutils_read_timeStamp(packet, 16);
-        /* 24-32 NTP请求报文离开发送端时发送端的本地时间。  T1 */
-        uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 24);
-        /* 32-40 NTP请求报文到达接收端时接收端的本地时间。 T2 */
-        uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 32);
-        /* 40-48 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
-        uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 40);
-        /* FIXME: 先简单这样写吧 */
-        rec_pts = Transmit_Timestamp;
-        //logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
+        /* 第一次在外部执行，后续再select中执行 */
         if (first == 0) {
+            uint64_t send_time = now_us() - base + rec_pts;
+            byteutils_put_timeStamp(time, 40, send_time);
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time send time 48 bytes, port = %d", raop_rtp_mirror->mirror_timing_rport);
+            struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp_mirror->remote_saddr;
+            addr->sin_port = htons(raop_rtp_mirror->mirror_timing_rport);
+            int sendlen = sendto(raop_rtp_mirror->mirror_time_sock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp_mirror->remote_saddr, raop_rtp_mirror->remote_saddr_len);
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
             first++;
-        } else {
+        }
+        fd_set rfds;
+        struct timeval tv;
+        int nfds, ret;
 
+        /* Set timeout value to 5ms */
+        tv.tv_sec = 0;
+        tv.tv_usec = 5000;
+
+        /* Get the correct nfds value */
+        nfds = raop_rtp_mirror->mirror_time_sock+1;
+
+        /* Set rfds and call select */
+        FD_ZERO(&rfds);
+        FD_SET(raop_rtp_mirror->mirror_time_sock, &rfds);
+        ret = select(nfds, &rfds, NULL, NULL, &tv);
+        if (ret == 0) {
+            /* Timeout happened */
+            continue;
+        } else if (ret == -1) {
+            /* FIXME: Error happened */
+            break;
+        }
+
+        if (FD_ISSET(raop_rtp_mirror->mirror_time_sock, &rfds)) {
+            saddrlen = sizeof(saddr);
+            packetlen = recvfrom(raop_rtp_mirror->mirror_time_sock, (char *)packet, sizeof(packet), 0,
+                                 (struct sockaddr *)&saddr, &saddrlen);
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time receive time packetlen = %d", packetlen);
+            if (packetlen < 0)
+            {
+                break;
+            }
+            /* 16-24 系统时钟最后一次被设定或更新的时间。 */
+            uint64_t Reference_Timestamp = byteutils_read_timeStamp(packet, 16);
+            /* 24-32 NTP请求报文离开发送端时发送端的本地时间。  T1 */
+            uint64_t Origin_Timestamp = byteutils_read_timeStamp(packet, 24);
+            /* 32-40 NTP请求报文到达接收端时接收端的本地时间。 T2 */
+            uint64_t Receive_Timestamp = byteutils_read_timeStamp(packet, 32);
+            /* 40-48 Transmit Timestamp：应答报文离开应答者时应答者的本地时间。 T3 */
+            uint64_t Transmit_Timestamp = byteutils_read_timeStamp(packet, 40);
+            /* FIXME: 先简单这样写吧 */
+            rec_pts = Transmit_Timestamp;
+            //logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time Transmit_Timestamp = %llu", Transmit_Timestamp);
 #ifdef _WIN32
             MUTEX_LOCK(raop_rtp_mirror->time_mutex);
             WaitForSingleObject(&raop_rtp_mirror->time_cond, 3000);
@@ -218,9 +236,15 @@ raop_rtp_mirror_thread_time(void *arg)
             int ret = pthread_cond_timedwait(&raop_rtp_mirror->time_cond, &raop_rtp_mirror->time_mutex, &outtime);
             MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
 #endif
-
-
+            uint64_t send_time = now_us() - base + rec_pts;
+            byteutils_put_timeStamp(time, 40, send_time);
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time send time 48 bytes, port = %d", raop_rtp_mirror->mirror_timing_rport);
+            struct sockaddr_in *addr = (struct sockaddr_in *)&raop_rtp_mirror->remote_saddr;
+            addr->sin_port = htons(raop_rtp_mirror->mirror_timing_rport);
+            int sendlen = sendto(raop_rtp_mirror->mirror_time_sock, (char *)time, sizeof(time), 0, (struct sockaddr *) &raop_rtp_mirror->remote_saddr, raop_rtp_mirror->remote_saddr_len);
+            logger_log(raop_rtp_mirror->logger, LOGGER_DEBUG, "raop_rtp_mirror_thread_time sendlen = %d", sendlen);
         }
+
     }
     logger_log(raop_rtp_mirror->logger, LOGGER_INFO, "Exiting UDP raop_rtp_mirror_thread_time thread");
     return 0;
@@ -566,23 +590,21 @@ void raop_rtp_mirror_stop(raop_rtp_mirror_t *raop_rtp_mirror) {
 
     /* Join the thread */
     THREAD_JOIN(raop_rtp_mirror->thread_mirror);
+    if (raop_rtp_mirror->mirror_data_sock != -1)
+    {
+        closesocket(raop_rtp_mirror->mirror_data_sock);
+        raop_rtp_mirror->mirror_data_sock = -1;
+    }
 
     MUTEX_LOCK(raop_rtp_mirror->time_mutex);
     COND_SIGNAL(raop_rtp_mirror->time_cond);
     MUTEX_UNLOCK(raop_rtp_mirror->time_mutex);
-
-	if (raop_rtp_mirror->mirror_data_sock != -1)
-	{
-		closesocket(raop_rtp_mirror->mirror_data_sock);
-		raop_rtp_mirror->mirror_data_sock = -1;
-	}
-	if (raop_rtp_mirror->mirror_time_sock != -1)
-	{
-		closesocket(raop_rtp_mirror->mirror_time_sock);
-		raop_rtp_mirror->mirror_time_sock = -1;
-	}
 	THREAD_JOIN(raop_rtp_mirror->thread_time);
-
+    if (raop_rtp_mirror->mirror_time_sock != -1)
+    {
+        closesocket(raop_rtp_mirror->mirror_time_sock);
+        raop_rtp_mirror->mirror_time_sock = -1;
+    }
     /* Mark thread as joined */
     MUTEX_LOCK(raop_rtp_mirror->run_mutex);
     raop_rtp_mirror->joined = 1;
