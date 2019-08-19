@@ -70,3 +70,15 @@ utils_hwaddr_airplay(char *str, int strlen, const char *hwaddr, int hwaddrlen)
 	return j;
 }
 
+char*
+utils_hexstr_to_byte(char *str, int strlen, int* data_len)
+{
+	int byte_len = strlen / 2;
+	*data_len = byte_len;
+	char* data = malloc(byte_len);
+	for (int i = 0; i < byte_len; i++) {
+		sscanf(str, "%2hhx", &data[i]);
+		str += 2;
+	}
+	return data;
+}

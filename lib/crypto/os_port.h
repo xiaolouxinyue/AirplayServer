@@ -44,6 +44,8 @@ extern "C" {
 #include <stdio.h>
 
 #if defined(WIN32)
+#include <winsock2.h>
+#pragma comment(lib,"ws2_32.lib")
 #define STDCALL                 /* Would be __stdcall but we don't want it */
 #define EXP_FUNC                __declspec(dllexport)
 #else

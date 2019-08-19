@@ -69,6 +69,12 @@ audio_set_volume(void *cls, void *opaque, float volume)
     session->volume = powf(10.0, 0.05 * volume);
 }
 
+//static void
+//video_destroy(void *cls)
+//{
+//
+//}
+
 static void
 log_callback(void *cls, int level, const char *msg) {
     switch (level) {
@@ -100,7 +106,7 @@ struct raop_server_s {
 };
 
 raop_server_t*
-raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback)
+raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callback video_callback, video_destroy_callback destroy_callback)
 {
     raop_server_t* raop_server;
     raop_server = (raop_server_t* ) calloc(1, sizeof(raop_server_t));
@@ -115,6 +121,7 @@ raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callb
     raop_cbs.audio_destroy = audio_destroy;
     raop_cbs.audio_set_volume = audio_set_volume;
     raop_cbs.video_process = video_callback;
+    raop_cbs.video_destroy = destroy_callback;
     raop_server->raop = raop_init(10, &raop_cbs);
     if (raop_server->raop == NULL) {
         LOGE("raop = NULL");
@@ -139,6 +146,7 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
         return 0;
     }
     unsigned short port = 0;
+    raop_set_hw_addr(raop_server->raop, hw_addr, hw_addr_len);
     raop_start(raop_server->raop, &port);
     raop_set_port(raop_server->raop, port);
     int error;
@@ -151,6 +159,7 @@ raop_server_start(raop_server_t* raop_server, const char* device_name, char* hw_
     }
     int err = dnssd_register_raop(raop_server->dnssd, port);
     if (err == DNSSD_ERROR_NOERROR) {
+        /* airplay port for video, not use now*/
         dnssd_register_airplay(raop_server->dnssd, port + 1);
     } else {
         raop_stop(raop_server->raop);
@@ -188,7 +197,7 @@ raop_server_get_port(raop_server_t* raop_server)
 void*
 raop_server_get_cls(raop_server_t* raop_server)
 {
-    raop_get_callback_cls(raop_server->raop);
+    return raop_get_callback_cls(raop_server->raop);
 }
 
 void

@@ -17,5 +17,6 @@
 
 int utils_hwaddr_raop(char *str, int strlen, const char *hwaddr, int hwaddrlen);
 int utils_hwaddr_airplay(char *str, int strlen, const char *hwaddr, int hwaddrlen);
+char* utils_hexstr_to_byte(char *str, int strlen, int* data_len);
 
 #endif
