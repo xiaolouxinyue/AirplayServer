@@ -106,7 +106,7 @@ raop_server_init(void *cls, audio_data_callback audio_callback, video_data_callb
     raop_cbs.audio_set_volume = audio_set_volume;
     raop_cbs.video_process = video_callback;
     raop_cbs.video_destroy = destroy_callback;
-    raop_server->raop = raop_init(10, &raop_cbs);
+    raop_server->raop = raop_init(1, &raop_cbs);
     if (raop_server->raop == NULL) {
         LOGE("raop = NULL");
         free(raop_server);
