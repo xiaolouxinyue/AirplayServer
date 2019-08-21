@@ -205,9 +205,6 @@ conn_destroy(void *ptr)
         /* This is done in case TEARDOWN was not called */
         raop_rtp_mirror_destroy(conn->raop_rtp_mirror);
     }
-    if (conn->raop->hw_addr) {
-    	free(conn->raop->hw_addr);
-    }
 	free(conn->local);
 	free(conn->remote);
 	free(conn);
@@ -390,6 +387,10 @@ void
 raop_stop(raop_t *raop)
 {
 	assert(raop);
+    if (raop->hw_addr) {
+        free(raop->hw_addr);
+        raop->hw_addr = NULL;
+    }
 	/* 停止的时候需要重新生成pair */
 	raop_reset_pairing_session(raop);
 	httpd_stop(raop->httpd);
